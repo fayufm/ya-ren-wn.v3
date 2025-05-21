@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>牙人</title>
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="titlebar">
+    <div class="titlebar-drag-region"></div>
+    <span class="titlebar-title">牙人</span>
+  </div>
+  <div id="app">
+    <header>
+      <!-- 搜索容器 -->
+      <div class="search-container">
+        <div class="search-wrapper">
+          <i class="fas fa-search search-icon"></i>
+          <input type="text" id="search-input" placeholder="请输入委托内容..." class="classical-input">
+          <button id="search-button" class="search-button">搜索</button>
+        </div>
+        <div class="location-filter">
+          <button id="location-button" class="location-circle-btn">
+            <img src="file://${__dirname}/dingwei.png" alt="定位" class="icon-img">
+          </button>
+          <div class="location-dropdown" id="location-dropdown">
+            <div class="location-dropdown-header">
+              <span>选择地区</span>
+              <button id="location-close" class="location-close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="location-options">
+              <div class="location-category">常用</div>
+              <div class="location-option selected" data-value="全国">
+                <span>全国</span>
+                <i class="fas fa-check"></i>
+              </div>
+              
+              <div class="location-category">直辖市</div>
+              <div class="location-option" data-value="北京">
+                <span>北京</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="上海">
+                <span>上海</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="天津">
+                <span>天津</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="重庆">
+                <span>重庆</span>
+                <i class="fas fa-check"></i>
+              </div>
+              
+              <div class="location-category">华东</div>
+              <div class="location-option" data-value="杭州">
+                <span>杭州</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="南京">
+                <span>南京</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="苏州">
+                <span>苏州</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="宁波">
+                <span>宁波</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="合肥">
+                <span>合肥</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="济南">
+                <span>济南</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="青岛">
+                <span>青岛</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="南昌">
+                <span>南昌</span>
+                <i class="fas fa-check"></i>
+              </div>
+              
+              <div class="location-category">华南</div>
+              <div class="location-option" data-value="广州">
+                <span>广州</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="深圳">
+                <span>深圳</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="厦门">
+                <span>厦门</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="福州">
+                <span>福州</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="南宁">
+                <span>南宁</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="海口">
+                <span>海口</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="东莞">
+                <span>东莞</span>
+                <i class="fas fa-check"></i>
+              </div>
+              
+              <div class="location-category">华中</div>
+              <div class="location-option" data-value="武汉">
+                <span>武汉</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="长沙">
+                <span>长沙</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="郑州">
+                <span>郑州</span>
+                <i class="fas fa-check"></i>
+              </div>
+              
+              <div class="location-category">华北</div>
+              <div class="location-option" data-value="石家庄">
+                <span>石家庄</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="太原">
+                <span>太原</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="呼和浩特">
+                <span>呼和浩特</span>
+                <i class="fas fa-check"></i>
+              </div>
+              
+              <div class="location-category">西南</div>
+              <div class="location-option" data-value="成都">
+                <span>成都</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="昆明">
+                <span>昆明</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="贵阳">
+                <span>贵阳</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="拉萨">
+                <span>拉萨</span>
+                <i class="fas fa-check"></i>
+              </div>
+              
+              <div class="location-category">西北</div>
+              <div class="location-option" data-value="西安">
+                <span>西安</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="兰州">
+                <span>兰州</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="西宁">
+                <span>西宁</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="银川">
+                <span>银川</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="乌鲁木齐">
+                <span>乌鲁木齐</span>
+                <i class="fas fa-check"></i>
+              </div>
+              
+              <div class="location-category">东北</div>
+              <div class="location-option" data-value="沈阳">
+                <span>沈阳</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="大连">
+                <span>大连</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="长春">
+                <span>长春</span>
+                <i class="fas fa-check"></i>
+              </div>
+              <div class="location-option" data-value="哈尔滨">
+                <span>哈尔滨</span>
+                <i class="fas fa-check"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- 首页视图 - 显示所有委托 -->
+      <section id="home-view" class="view active">
+        <h2>所有委托</h2>
+        <div id="commissions-list" class="grid-list"></div>
+      </section>
+
+      <!-- 我的视图 - 显示个人设置和我的委托 -->
+      <section id="my-view" class="view">
+        <div class="settings-panel">
+          <h2>个人设置</h2>
+          <div class="setting-item">
+            <label for="dark-mode-toggle">夜间模式</label>
+            <div class="toggle">
+              <input type="checkbox" id="dark-mode-toggle">
+              <label for="dark-mode-toggle"></label>
+            </div>
+          </div>
+          
+          <div class="api-section">
+            <h3>API端点</h3>
+            <div class="api-tip">请输入您的API，帮助您过滤不健康内容。</div>
+            <div id="api-list"></div>
+            <div class="add-api">
+              <input type="text" id="api-input" placeholder="添加新API端点">
+              <button id="add-api-button">添加</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="my-content">
+          <h2>我的委托</h2>
+          <div id="my-commissions" class="grid-list"></div>
+          
+          <h2>我的消息记录</h2>
+          <div id="my-messages"></div>
+        </div>
+      </section>
+
+      <!-- 发布委托视图 -->
+      <section id="create-view" class="view">
+        <h2>发布新委托</h2>
+        <form id="commission-form">
+          <!-- 图片上传 -->
+          <div class="form-group">
+            <label for="image-upload">上传图片</label>
+            <div class="image-upload-container">
+              <div class="image-preview-area" id="image-preview">
+                <i class="fas fa-image upload-icon"></i>
+                <span>点击或拖拽图片到此处</span>
+              </div>
+              <input type="file" id="image-upload" accept="image/*" class="hidden-input">
+              <button type="button" id="select-image-btn" class="secondary-btn">选择图片</button>
+            </div>
+          </div>
+          
+          <!-- 标题 -->
+          <div class="form-group">
+            <label for="title">委托标题</label>
+            <input type="text" id="title" required>
+          </div>
+          
+          <!-- 详细内容 -->
+          <div class="form-group">
+            <label for="description">详细内容</label>
+            <textarea id="description" rows="5" required></textarea>
+          </div>
+          
+          <!-- 联系方式 - 多项 -->
+          <div class="form-group">
+            <label>联系方式</label>
+            <div id="contact-list">
+              <!-- 联系方式项会由JavaScript动态添加 -->
+            </div>
+            <button type="button" id="add-contact-btn" class="secondary-btn">
+              <i class="fas fa-plus"></i> 添加联系方式
+            </button>
+          </div>
+          
+          <!-- 报酬 -->
+          <div class="form-group">
+            <label for="reward">报酬</label>
+            <div class="reward-container">
+              <input type="text" id="reward" placeholder="例如：¥100、一顿饭、一次帮忙等">
+              <div class="reward-tip">可以不是金钱，填写您愿意提供的报酬</div>
+            </div>
+          </div>
+          
+          <!-- 发布城市 -->
+          <div class="form-group">
+            <label for="city">发布城市</label>
+            <div class="city-selection">
+              <select id="city">
+                <option value="全国">全国</option>
+                <option value="北京">北京</option>
+                <option value="上海">上海</option>
+                <option value="广州">广州</option>
+                <option value="深圳">深圳</option>
+                <option value="天津">天津</option>
+                <option value="重庆">重庆</option>
+                <option value="成都">成都</option>
+                <option value="杭州">杭州</option>
+                <option value="武汉">武汉</option>
+                <option value="西安">西安</option>
+                <option value="南京">南京</option>
+                <option value="长沙">长沙</option>
+                <option value="苏州">苏州</option>
+                <option value="郑州">郑州</option>
+                <option value="沈阳">沈阳</option>
+                <option value="青岛">青岛</option>
+                <option value="大连">大连</option>
+                <option value="宁波">宁波</option>
+                <option value="厦门">厦门</option>
+                <option value="福州">福州</option>
+                <option value="济南">济南</option>
+                <option value="合肥">合肥</option>
+                <option value="哈尔滨">哈尔滨</option>
+                <option value="长春">长春</option>
+                <option value="昆明">昆明</option>
+                <option value="贵阳">贵阳</option>
+                <option value="南宁">南宁</option>
+                <option value="太原">太原</option>
+                <option value="石家庄">石家庄</option>
+                <option value="乌鲁木齐">乌鲁木齐</option>
+                <option value="兰州">兰州</option>
+                <option value="西宁">西宁</option>
+                <option value="银川">银川</option>
+                <option value="呼和浩特">呼和浩特</option>
+                <option value="拉萨">拉萨</option>
+                <option value="海口">海口</option>
+                <option value="南昌">南昌</option>
+                <option value="东莞">东莞</option>
+              </select>
+              <div class="city-tip">选择"全国"表示不限地区</div>
+            </div>
+          </div>
+          
+          <!-- 添加更多图片或视频 -->
+          <div class="form-group">
+            <label>添加更多图片或视频 (最多5个)</label>
+            <div id="additional-files-container">
+              <div class="additional-files-list" id="additional-files-list">
+                <!-- 已添加的文件会显示在这里 -->
+              </div>
+              <div class="additional-files-controls">
+                <input type="file" id="additional-file-upload" accept="image/*,video/*" class="hidden-input" multiple>
+                <button type="button" id="select-additional-files-btn" class="secondary-btn">
+                  <i class="fas fa-plus"></i> 添加图片或视频
+                </button>
+                <div class="additional-files-tip">支持图片和视频，视频大小不超过100MB，最多添加5个文件</div>
+              </div>
+            </div>
+          </div>
+          
+          <button type="submit" id="publish-button">发布委托</button>
+        </form>
+      </section>
+
+      <!-- 委托详情视图 -->
+      <section id="detail-view" class="view">
+        <div class="detail-header">
+          <button id="back-button">返回</button>
+          <h2 id="detail-title"></h2>
+          <div id="detail-id" class="detail-id"></div>
+        </div>
+        
+        <div class="detail-content">
+          <div id="detail-image-container" class="detail-image-container"></div>
+          <div id="detail-description"></div>
+          <div id="detail-contacts"></div>
+          <div id="detail-reward"></div>
+          <div id="detail-city"></div>
+          <div id="detail-date"></div>
+          
+          <!-- 添加额外图片和视频展示区域 -->
+          <div id="detail-additional-files" class="detail-additional-files">
+            <h4 class="additional-files-title">图片与视频</h4>
+            <div id="detail-files-container" class="detail-files-container">
+              <!-- 这里将展示上传的额外图片和视频 -->
+            </div>
+          </div>
+          
+          <!-- 赞/踩功能 -->
+          <div class="rating-container">
+            <div class="rating-item">
+              <button id="like-button" class="rating-btn like-btn">
+                <img src="zan.png" alt="赞" class="rating-icon">
+                <span id="like-count">0</span>
+              </button>
+            </div>
+            <div class="rating-item">
+              <button id="dislike-button" class="rating-btn dislike-btn">
+                <img src="cai.png" alt="踩" class="rating-icon">
+                <span id="dislike-count">0</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="chat-section">
+          <h3>聊天室</h3>
+          <div id="chat-messages"></div>
+          <div class="message-input">
+            <input type="text" id="message-input" placeholder="输入消息...">
+            <button id="send-message">发送</button>
+          </div>
+        </div>
+      </section>
+    </main>
+    
+    <!-- 右下角浮动导航按钮 -->
+    <div class="floating-nav">
+      <div class="nav-circle" id="home-tab">
+        <img src="zhuye.png" alt="首页" class="icon-img">
+        <span class="nav-tooltip">首页</span>
+      </div>
+      <div class="nav-circle" id="my-tab">
+        <img src="wode.png" alt="我的" class="icon-img">
+        <span class="nav-tooltip">我的</span>
+      </div>
+      <div class="nav-circle" id="create-tab">
+        <img src="tianjia.png" alt="发布委托" class="icon-img">
+        <span class="nav-tooltip">发布委托</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="scripts/app.js"></script>
+</body>
+</html> 
