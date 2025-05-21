@@ -8,10 +8,11 @@
     "dev": "electron .",
     "clean-dist": "rimraf dist",
     "build": "npm run clean-dist && electron-builder",
+    "release": "npm run build && electron-builder --publish always",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "fayufm",
   "license": "ISC",
   "devDependencies": {
     "electron": "^36.0.0",
@@ -32,28 +33,24 @@
     },
     "icon": "yaren.ico",
     "win": {
-      "target": "nsis",
-      "verifyUpdateCodeSignature": false,
-      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
       "icon": "yaren.ico"
     },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "perMachine": false,
-      "installerIcon": "yaren.ico",
-      "uninstallerIcon": "yaren.ico",
-      "installerHeaderIcon": "yaren.ico",
-      "installerSidebar": "yaren-1.png",
-      "uninstallerSidebar": "yaren-1.png",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "牙人",
-      "artifactName": "牙人安装程序-${version}.${ext}",
-      "include": "installer.nsh"
+    "portable": {
+      "artifactName": "牙人-${version}.exe"
     },
     "forceCodeSigning": false,
-    "publish": null,
+    "publish": {
+      "provider": "github",
+      "owner": "fayufm",
+      "repo": "ya-ren-wn.v3",
+      "releaseType": "release"
+    },
     "electronDownload": {
       "strictSSL": false
     }

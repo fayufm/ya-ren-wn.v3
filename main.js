@@ -248,7 +248,7 @@ function createWindow() {
     autoHideMenuBar: true,
     frame: true,
     // 设置应用图标
-    icon: path.join(__dirname, 'yaren.png'),
+    icon: path.join(__dirname, 'yaren.ico'),
     // 添加透明标题栏设置
     titleBarStyle: 'hidden',
     titleBarOverlay: {
