@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>访问受限 - 牙人</title>
+  <style>
+    :root {
+      --primary-color: #4a86e8;
+      --background-color: #f8f9fa;
+      --text-color: #333333;
+      --danger-color: #dc3545;
+      --font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+    }
+    
+    body {
+      font-family: var(--font-family);
+      background-color: var(--background-color);
+      color: var(--text-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .blocked-container {
+      max-width: 600px;
+      padding: 40px;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+      color: var(--danger-color);
+      margin-bottom: 20px;
+    }
+    
+    p {
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 15px;
+    }
+    
+    .icon {
+      font-size: 64px;
+      color: var(--danger-color);
+      margin-bottom: 20px;
+    }
+    
+    .contact {
+      margin-top: 30px;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .error-code {
+      display: inline-block;
+      background-color: #f8f8f8;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin: 0 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="blocked-container">
+    <div class="icon">⚠️</div>
+    <h1>访问受限</h1>
+    <p>很抱歉，您的设备已被限制访问"牙人"应用程序。</p>
+    <p>可能的原因：</p>
+    <ul style="text-align: left;">
+      <li>检测到多次违规操作或恶意行为</li>
+      <li>存在安全风险或异常访问模式</li>
+      <li>多次提交不当或违规内容</li>
+      <li>尝试绕过系统安全措施</li>
+    </ul>
+    <p>如果您认为这是一个错误，请联系管理员并提供错误代码：<span class="error-code" id="error-code">正在生成...</span></p>
+    <div class="contact">
+      <p>联系邮箱：support@yaren-app.com</p>
+    </div>
+  </div>
+
+  <script>
+    // 生成错误代码（设备ID的一部分 + 时间戳）
+    document.addEventListener('DOMContentLoaded', () => {
+      const timestamp = Date.now().toString(36);
+      const randomPart = Math.random().toString(36).substring(2, 6);
+      document.getElementById('error-code').textContent = `BLK-${randomPart}-${timestamp}`;
+    });
+  </script>
+</body>
+</html> 

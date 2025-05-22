@@ -1,0 +1,72 @@
+{
+  "name": "yaren-app",
+  "version": "1.0.0",
+  "description": "牙人委托发布与查看应用",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "clean-dist": "rimraf dist",
+    "build": "npm run clean-dist && electron-builder",
+    "release": "npm run build && electron-builder --publish always",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "fayufm",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^36.0.0",
+    "electron-builder": "^26.0.12",
+    "rimraf": "^5.0.5"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "electron-store": "^10.0.1",
+    "uuid": "^11.1.0"
+  },
+  "build": {
+    "appId": "com.yaren.app",
+    "productName": "牙人",
+    "directories": {
+      "output": "dist"
+    },
+    "icon": "yaren.ico",
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "yaren.ico"
+    },
+    "portable": {
+      "artifactName": "牙人-${version}.exe"
+    },
+    "forceCodeSigning": false,
+    "publish": {
+      "provider": "github",
+      "owner": "fayufm",
+      "repo": "ya-ren-wn.v3",
+      "releaseType": "release"
+    },
+    "electronDownload": {
+      "strictSSL": false
+    },
+    "asar": true,
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ]
+  }
+}
