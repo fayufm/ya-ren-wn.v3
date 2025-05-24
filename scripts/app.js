@@ -1270,10 +1270,10 @@ async function handleImageUpload(event) {
     const compressedFile = await compressImage(file);
     
     // 读取压缩后的图片
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      currentImageData = e.target.result;
-      updateImagePreview();
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    currentImageData = e.target.result;
+    updateImagePreview();
       showToast('图片已压缩并上传');
     };
     reader.readAsDataURL(compressedFile);

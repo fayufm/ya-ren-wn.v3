@@ -21,10 +21,19 @@ jobs:
     - name: 添加服务器到已知主机
       run: ssh-keyscan -H 8.155.16.247 >> ~/.ssh/known_hosts
       
+    - name: 测试SSH连接
+      run: |
+        ssh -v root@8.155.16.247 "echo 'SSH连接测试成功'"
+      
+    - name: 列出当前目录文件
+      run: ls -la
+      
     - name: 部署到服务器
       run: |
-        rsync -avz --exclude 'node_modules' --exclude '.git' . root@8.155.16.247:/var/www/yaren-server/
+        tar -czf deploy.tar.gz --exclude='node_modules' --exclude='.git' .
+        scp deploy.tar.gz root@8.155.16.247:/var/www/yaren-server/
+        ssh root@8.155.16.247 "cd /var/www/yaren-server && tar -xzf deploy.tar.gz && rm deploy.tar.gz"
         
     - name: 远程执行部署命令
       run: |
-        ssh root@8.155.16.247 "cd /var/www/yaren-server && npm install --production && pm2 restart main.js || pm2 start main.js --name yaren-server"
+        ssh root@8.155.16.247 "cd /var/www/yaren-server && ls -la && npm install --production && pm2 restart main.js || pm2 start main.js --name yaren-server"
