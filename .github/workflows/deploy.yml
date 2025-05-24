@@ -3,8 +3,6 @@ name: 部署到阿里云ECS服务器
 on:
   push:
     branches: [ 1.0.1 ]  # 根据您的分支名称调整
-    paths: 
-      - 'server/**'     # 只有当 server 目录中的文件变更时才触发
 
 jobs:
   deploy:
@@ -25,9 +23,8 @@ jobs:
       
     - name: 部署到服务器
       run: |
-        cd server
         rsync -avz --exclude 'node_modules' --exclude '.git' . root@8.155.16.247:/var/www/yaren-server/
         
     - name: 远程执行部署命令
       run: |
-        ssh root@8.155.16.247 "cd /var/www/yaren-server && npm install --production && pm2 restart app.js || pm2 start app.js --name yaren-server"
+        ssh root@8.155.16.247 "cd /var/www/yaren-server && npm install --production && pm2 restart main.js || pm2 start main.js --name yaren-server"
