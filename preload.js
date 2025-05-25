@@ -1,36 +1,71 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// 安全地调用 IPC 方法
+function safeIpcCall(channel, ...args) {
+  return new Promise((resolve, reject) => {
+    try {
+      ipcRenderer.invoke(channel, ...args)
+        .then(resolve)
+        .catch(error => {
+          console.error(`调用 ${channel} 失败:`, error);
+          reject(error);
+        });
+    } catch (error) {
+      console.error(`调用 ${channel} 失败:`, error);
+      reject(error);
+    }
+  });
+}
+
 // 暴露API给渲染进程
 contextBridge.exposeInMainWorld('api', {
   // 委托相关
-  getCommissions: () => ipcRenderer.invoke('get-commissions'),
-  createCommission: (commission) => ipcRenderer.invoke('create-commission', commission),
-  getCommission: (id) => ipcRenderer.invoke('get-commission', id),
-  getMyCommissions: () => ipcRenderer.invoke('get-my-commissions'),
-  searchCommission: (id) => ipcRenderer.invoke('search-commission', id),
-  deleteCommission: (id) => ipcRenderer.invoke('delete-commission', id),
+  getCommissions: () => safeIpcCall('get-commissions'),
+  createCommission: (commission) => safeIpcCall('create-commission', commission),
+  getCommission: (id) => safeIpcCall('get-commission', id),
+  getMyCommissions: () => safeIpcCall('get-my-commissions'),
+  searchCommission: (id) => safeIpcCall('search-commission', id),
+  deleteCommission: (id) => safeIpcCall('delete-commission', id),
   
   // 赞踩功能
-  getCommissionRatings: (commissionId) => ipcRenderer.invoke('get-commission-ratings', commissionId),
-  rateCommission: (commissionId, ratingType) => ipcRenderer.invoke('rate-commission', { commissionId, ratingType }),
+  getCommissionRatings: (commissionId) => safeIpcCall('get-commission-ratings', commissionId),
+  rateCommission: (commissionId, ratingType) => safeIpcCall('rate-commission', { commissionId, ratingType }),
   
   // 管理员功能
-  adminDeleteCommission: (id) => ipcRenderer.invoke('admin-delete-commission', id),
+  adminDeleteCommission: (id) => safeIpcCall('admin-delete-commission', id),
   adminDeleteMessage: (commissionId, messageIndex) => 
-    ipcRenderer.invoke('admin-delete-message', { commissionId, messageIndex }),
+    safeIpcCall('admin-delete-message', { commissionId, messageIndex }),
   
   // 内容审核相关
-  checkContent: (content) => ipcRenderer.invoke('check-content', content),
+  checkContent: (content) => safeIpcCall('check-content', content),
   
   // 消息相关
-  getMessages: (commissionId) => ipcRenderer.invoke('get-messages', commissionId),
-  addMessage: (commissionId, message) => ipcRenderer.invoke('add-message', { commissionId, message }),
+  getMessages: (commissionId) => safeIpcCall('get-messages', commissionId),
+  addMessage: (commissionId, message) => safeIpcCall('add-message', { commissionId, message }),
   
   // 设置相关
-  getSettings: () => ipcRenderer.invoke('get-settings'),
-  updateSettings: (settings) => ipcRenderer.invoke('update-settings', settings),
+  getSettings: () => safeIpcCall('get-settings'),
+  updateSettings: (settings) => safeIpcCall('update-settings', settings),
   
   // 应用控制相关
-  closeApp: () => ipcRenderer.invoke('close-app'),
-  resizeWindow: (scale) => ipcRenderer.invoke('resize-window', { scale })
+  closeApp: () => safeIpcCall('close-app'),
+  minimizeApp: () => safeIpcCall('minimize-app'),
+  maximizeApp: () => safeIpcCall('maximize-app'),
+  resizeWindow: (scale) => safeIpcCall('resize-window', { scale }),
+  
+  // 系统信息
+  getPlatform: () => process.platform,
+  getAppVersion: () => safeIpcCall('get-app-version'),
+  
+  // 其他辅助功能
+  showErrorDialog: (title, message) => safeIpcCall('show-error-dialog', { title, message }),
+  
+  // 通知渲染进程事件
+  onThemeChange: (callback) => {
+    const listener = (_, isDark) => callback(isDark);
+    ipcRenderer.on('theme-changed', listener);
+    return () => {
+      ipcRenderer.removeListener('theme-changed', listener);
+    };
+  }
 }); 

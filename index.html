@@ -6,11 +6,71 @@
   <title>牙人</title>
   <link rel="stylesheet" href="styles/main.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* 添加标题栏按钮样式 */
+    .titlebar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 32px;
+      background-color: #f5f5f5;
+      -webkit-app-region: drag;
+      padding: 0 10px;
+      user-select: none;
+    }
+    
+    .titlebar-title {
+      margin-right: auto;
+      font-weight: bold;
+    }
+    
+    .titlebar-controls {
+      display: flex;
+      -webkit-app-region: no-drag;
+    }
+    
+    .titlebar-button {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .titlebar-button:hover {
+      background-color: #e5e5e5;
+    }
+    
+    .titlebar-button.close:hover {
+      background-color: #e81123;
+      color: white;
+    }
+    
+    .titlebar-drag-region {
+      -webkit-app-region: drag;
+      flex: 1;
+    }
+  </style>
 </head>
 <body>
+  <!-- 首先加载错误处理脚本 -->
+  <script src="scripts/error-handler.js"></script>
+  
   <div class="titlebar">
-    <div class="titlebar-drag-region"></div>
     <span class="titlebar-title">牙人</span>
+    <div class="titlebar-controls">
+      <div id="minimize-btn" class="titlebar-button">
+        <i class="fas fa-window-minimize"></i>
+      </div>
+      <div id="maximize-btn" class="titlebar-button">
+        <i class="fas fa-window-maximize"></i>
+      </div>
+      <div id="close-btn" class="titlebar-button close">
+        <i class="fas fa-times"></i>
+      </div>
+    </div>
   </div>
   <div id="app">
     <header>
@@ -437,6 +497,20 @@
     </div>
   </div>
 
+  <script>
+    // 窗口控制按钮
+    document.getElementById('minimize-btn').addEventListener('click', () => {
+      window.api.minimizeApp();
+    });
+    
+    document.getElementById('maximize-btn').addEventListener('click', () => {
+      window.api.maximizeApp();
+    });
+    
+    document.getElementById('close-btn').addEventListener('click', () => {
+      window.api.closeApp();
+    });
+  </script>
   <script src="scripts/app.js"></script>
 </body>
 </html> 

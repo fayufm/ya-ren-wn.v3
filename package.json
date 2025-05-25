@@ -1,14 +1,14 @@
 {
-  "name": "yaren-app",
-  "version": "1.0.0",
-  "description": "牙人委托发布与查看应用",
-  "main": "main.js",
+  "name": "yaren-app-portable",
+  "version": "1.0.1",
+  "description": "牙人委托发布与查看应用（便携版）",
+  "main": "main-compat.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "clean-dist": "rimraf dist",
-    "build": "npm run clean-dist && electron-builder",
-    "release": "npm run build && electron-builder --publish always",
+    "clean-dist": "rimraf portable-dist-final",
+    "build": "npm run clean-dist && electron-builder --config portable-config.js",
+    "release": "npm run build && electron-builder --publish never --config portable-config.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -20,39 +20,6 @@
     "rimraf": "^5.0.5"
   },
   "dependencies": {
-    "axios": "^1.9.0",
-    "electron-store": "^10.0.1",
-    "lowdb": "^7.0.1",
-    "uuid": "^11.1.0"
-  },
-  "build": {
-    "appId": "com.yaren.app",
-    "productName": "牙人",
-    "directories": {
-      "output": "dist"
-    },
-    "icon": "yaren.ico",
-    "win": {
-      "target": [
-        {
-          "target": "portable",
-          "arch": ["x64"]
-        }
-      ],
-      "icon": "yaren.ico"
-    },
-    "portable": {
-      "artifactName": "牙人-${version}.exe"
-    },
-    "forceCodeSigning": false,
-    "publish": {
-      "provider": "github",
-      "owner": "fayufm",
-      "repo": "ya-ren-wn.v3",
-      "releaseType": "release"
-    },
-    "electronDownload": {
-      "strictSSL": false
-    }
+    "axios": "^1.9.0"
   }
-}
+} 

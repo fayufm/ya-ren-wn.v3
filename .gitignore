@@ -1,4 +1,19 @@
+# 依赖目录
 node_modules/
-dist1/
+
+# 构建输出
+dist/
+portable-dist/
+portable-dist-new/
+portable-dist-fixed/
+portable-dist-final/
+portable-dist-frameless/
+
+# 本地数据
+app-data/
+
+# 其他无需上传的文件
+package-lock.json
+temp-package.json
 *.exe
 .env
