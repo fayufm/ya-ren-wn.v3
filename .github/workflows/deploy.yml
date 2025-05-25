@@ -2,38 +2,66 @@ name: 部署到阿里云ECS服务器
 
 on:
   push:
-    branches: [ 1.0.1 ]  # 根据您的分支名称调整
+    branches: [ 1.0.1 ]  # 触发分支
+
+env:
+  SERVER_IP: 8.155.16.247
+  DEPLOY_DIR: /var/www/yaren-server
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: 检出代码
-      uses: actions/checkout@v3
-    
-    - name: 安装 SSH 密钥
-      uses: shimataro/ssh-key-action@v2
-      with:
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        known_hosts: unnecessary
-        if_key_exists: replace
-        
-    - name: 添加服务器到已知主机
-      run: ssh-keyscan -H 8.155.16.247 >> ~/.ssh/known_hosts
-      
-    - name: 测试SSH连接
-      run: |
-        ssh -v root@8.155.16.247 "echo 'SSH连接测试成功'"
-      
-    - name: 列出当前目录文件
-      run: ls -la
-      
-    - name: 部署到服务器
-      run: |
-        tar -czf deploy.tar.gz --exclude='node_modules' --exclude='.git' .
-        scp deploy.tar.gz root@8.155.16.247:/var/www/yaren-server/
-        ssh root@8.155.16.247 "cd /var/www/yaren-server && tar -xzf deploy.tar.gz && rm deploy.tar.gz"
-        
-    - name: 远程执行部署命令
-      run: |
-        ssh root@8.155.16.247 "cd /var/www/yaren-server && ls -la && npm install --production && pm2 restart main.js || pm2 start main.js --name yaren-server"
+      - name:  检出代码
+        uses: actions/checkout@v3  # 升级到最新版
+
+      - name: 配置SSH密钥
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts  # 预置主机指纹提升安全性
+
+      - name: 测试SSH连接（详细模式）
+        run: |
+          ssh -vvv \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            -i ~/.ssh/id_rsa \
+            root@${{ env.SERVER_IP }} \
+            "echo '✅ SSH连接成功！服务器时间: $(date)'"
+
+      - name: 打包代码（排除无用文件）
+        run: |
+          tar --exclude='.git' \
+              --exclude='node_modules' \
+              --exclude='.env' \
+              --exclude='*.log' \
+              -czf deploy.tar.gz .
+
+      - name: 传输文件到服务器
+        run: |
+          scp -i ~/.ssh/id_rsa \
+              -o StrictHostKeyChecking=yes \
+              deploy.tar.gz root@${{ env.SERVER_IP }}:${{ env.DEPLOY_DIR }}
+
+      - name: 执行部署命令
+        run: |
+          ssh -i ~/.ssh/id_rsa root@${{ env.SERVER_IP }} << EOF
+            set -e  # 任何命令失败立即终止
+            cd $DEPLOY_DIR
+            tar -xzf deploy.tar.gz
+            rm deploy.tar.gz
+            npm ci --only=production  # 更严格的依赖安装
+            if pm2 ls | grep -q yaren-server; then
+              pm2 reload yaren-server --update-env
+            else
+              pm2 start main.js --name yaren-server
+            fi
+            pm2 save
+            echo "🔧 当前服务状态:"
+            pm2 status
+          EOF
+
+      - name: 清理本地临时文件
+        run: rm -f deploy.tar.gz

@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "yaren-app": "file:.."
+  }
+}
