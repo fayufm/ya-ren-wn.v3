@@ -8,6 +8,8 @@ portable-dist-new/
 portable-dist-fixed/
 portable-dist-final/
 portable-dist-frameless/
+build/output/
+out/
 
 # 本地数据
 app-data/
@@ -16,4 +18,24 @@ app-data/
 package-lock.json
 temp-package.json
 *.exe
+*.zip
+*.dmg
+*.deb
+*.rpm
+*.AppImage
+*.msi
+*.pkg
 .env
+
+# 日志文件
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini

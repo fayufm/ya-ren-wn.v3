@@ -614,6 +614,7 @@ ipcMain.handle('get-messages', (event, commissionId) => {
 // 添加消息到委托
 ipcMain.handle('add-message', (event, { commissionId, message }) => {
   const deviceId = getDeviceId();
+  console.log(`添加消息，设备ID: ${deviceId}，委托ID: ${commissionId}，消息内容: ${message}`);
   
   // 检查频率限制
   if (isRateLimited(deviceId)) {
@@ -638,13 +639,56 @@ ipcMain.handle('add-message', (event, { commissionId, message }) => {
   }
   
   try {
+    // 获取所有消息
     const messages = store.get('messages');
+    console.log('获取当前存储的所有消息');
+    
+    // 检查评论数量限制
+    let userMessages = [];
+    
+    // 遍历所有委托的消息，找出当前用户的消息
+    Object.values(messages).forEach(commissionMessages => {
+      if (Array.isArray(commissionMessages)) {
+        const filteredMessages = commissionMessages.filter(msg => msg.deviceId === deviceId);
+        userMessages = userMessages.concat(filteredMessages);
+      }
+    });
+    
+    console.log(`用户当前总评论数: ${userMessages.length}`);
+    
+    // 检查总数限制
+    const totalCount = userMessages.length;
+    if (totalCount >= 50) {
+      return { error: 'total-limit-reached', message: '您的评论总数已达到上限(50条)，无法继续发表评论' };
+    }
+    
+    // 检查每日限制
+    const today = new Date().toISOString().split('T')[0]; // 获取当天日期，格式为YYYY-MM-DD
+    const todayMessages = userMessages.filter(msg => {
+      const messageDate = new Date(msg.timestamp).toISOString().split('T')[0];
+      return messageDate === today;
+    });
+    
+    console.log(`用户今日评论数: ${todayMessages.length}`);
+    
+    if (todayMessages.length >= 10) {
+      return { error: 'daily-limit-reached', message: '您今天已发表10条评论，请明天再来' };
+    }
+    
+    // 确保消息内容非空
+    if (!message || message.trim() === '') {
+      return { error: 'empty-message', message: '消息内容不能为空' };
+    }
+    
+    // 添加新消息
     const newMessage = {
       id: uuidv4(),
-      content: message,
+      content: message.trim(), // 修复这里：确保消息内容被正确保存
       deviceId,
       timestamp: new Date().toISOString()
     };
+    
+    console.log('新消息对象:', newMessage);
     
     if (!messages[commissionId]) {
       messages[commissionId] = [];
@@ -653,11 +697,75 @@ ipcMain.handle('add-message', (event, { commissionId, message }) => {
     messages[commissionId].push(newMessage);
     store.set('messages', messages);
     
+    console.log('消息添加成功，新评论计数:', {
+      totalCount: totalCount + 1,
+      dailyCount: todayMessages.length + 1
+    });
+    
     resetFailedAttempts(deviceId);
     return newMessage;
   } catch (error) {
+    console.error('添加消息失败:', error);
     recordFailedAttempt(deviceId);
     return { error: 'message-failed', message: '发送消息失败，请稍后再试' };
+  }
+});
+
+// 删除消息
+ipcMain.handle('delete-message', (event, { commissionId, messageId }) => {
+  const deviceId = getDeviceId();
+  console.log(`尝试删除消息，设备ID: ${deviceId}，委托ID: ${commissionId}，消息ID: ${messageId}`);
+  
+  // 检查频率限制
+  if (isRateLimited(deviceId)) {
+    logSecurityEvent('rate-limit-triggered', { deviceId, action: 'delete-message' });
+    return { error: 'rate-limited', message: '请求过于频繁，请稍后再试' };
+  }
+  
+  // 检查锁定状态
+  const lockStatus = checkFailedAttempts(deviceId);
+  if (lockStatus.locked) {
+    return { 
+      error: 'account-locked', 
+      message: `账户已被锁定，请等待${lockStatus.remainingTime}秒后重试` 
+    };
+  }
+  
+  try {
+    // 获取所有消息
+    const messages = store.get('messages');
+    
+    // 检查委托是否存在
+    if (!messages[commissionId] || !Array.isArray(messages[commissionId])) {
+      return { error: 'commission-not-found', message: '未找到相关委托的消息' };
+    }
+    
+    // 查找要删除的消息
+    const messageIndex = messages[commissionId].findIndex(msg => msg.id === messageId);
+    
+    // 检查消息是否存在
+    if (messageIndex === -1) {
+      return { error: 'message-not-found', message: '未找到指定消息' };
+    }
+    
+    // 确认是当前用户发送的消息
+    if (messages[commissionId][messageIndex].deviceId !== deviceId) {
+      logSecurityEvent('unauthorized-message-deletion', { deviceId, messageId });
+      return { error: 'unauthorized', message: '您只能删除自己发送的消息' };
+    }
+    
+    // 删除消息
+    messages[commissionId].splice(messageIndex, 1);
+    store.set('messages', messages);
+    
+    console.log(`成功删除消息，委托ID: ${commissionId}，消息ID: ${messageId}`);
+    resetFailedAttempts(deviceId);
+    
+    return { success: true, message: '消息已删除' };
+  } catch (error) {
+    console.error('删除消息失败:', error);
+    recordFailedAttempt(deviceId);
+    return { error: 'delete-failed', message: '删除消息失败，请稍后再试' };
   }
 });
 
@@ -792,6 +900,61 @@ ipcMain.handle('delete-commission', (event, id) => {
     recordFailedAttempt(deviceId);
     logSecurityEvent('commission-deletion-error', { deviceId, commissionId: id, error: error.message });
     return { success: false, error: error.message };
+  }
+});
+
+// 检查评论限制
+ipcMain.handle('check-comment-limit', (event) => {
+  const deviceId = getDeviceId();
+  console.log(`检查评论限制，设备ID: ${deviceId}`);
+  
+  try {
+    // 获取所有消息
+    const messages = store.get('messages');
+    
+    // 检查评论数量限制
+    let userMessages = [];
+    
+    // 遍历所有委托的消息，找出当前用户的消息
+    Object.values(messages).forEach(commissionMessages => {
+      if (Array.isArray(commissionMessages)) {
+        const filteredMessages = commissionMessages.filter(msg => msg.deviceId === deviceId);
+        userMessages = userMessages.concat(filteredMessages);
+      }
+    });
+    
+    console.log(`后端统计：用户当前总评论数: ${userMessages.length}`);
+    
+    // 检查总数限制
+    const totalCount = userMessages.length;
+    const totalLimitReached = totalCount >= 50;
+    
+    // 检查每日限制
+    const today = new Date().toISOString().split('T')[0]; // 获取当天日期，格式为YYYY-MM-DD
+    const todayMessages = userMessages.filter(msg => {
+      const messageDate = new Date(msg.timestamp).toISOString().split('T')[0];
+      return messageDate === today;
+    });
+    
+    console.log(`后端统计：用户今日评论数: ${todayMessages.length}`);
+    
+    const dailyCount = todayMessages.length;
+    const dailyLimitReached = dailyCount >= 10;
+    
+    return {
+      dailyCount,
+      totalCount,
+      dailyLimitReached,
+      totalLimitReached
+    };
+  } catch (error) {
+    console.error('检查评论限制失败:', error);
+    return {
+      dailyCount: 0,
+      totalCount: 0,
+      dailyLimitReached: false,
+      totalLimitReached: false
+    };
   }
 });
 
@@ -1215,4 +1378,24 @@ ipcMain.handle('resize-window', (event, { scale }) => {
 // 当所有窗口关闭时退出应用
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
+});
+
+// 获取应用版本
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
+
+// 获取设备ID
+ipcMain.handle('get-device-id', () => {
+  return getDeviceId();
+});
+
+// 应用最小化
+ipcMain.handle('minimize-app', () => {
+  if (BrowserWindow.getAllWindows().length > 0) {
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+    mainWindow.minimize();
+    return { success: true };
+  }
+  return { success: false, error: '找不到窗口实例' };
 }); 

@@ -82,6 +82,10 @@ let textObserver = null; // MutationObserver实例
 const COMMISSION_DAILY_LIMIT = 2; // 每天最多发布2个委托
 const COMMISSION_TOTAL_LIMIT = 10; // 同时最多拥有10个委托
 
+// 评论发布限制
+const COMMENT_DAILY_LIMIT = 10; // 每天最多发表10条评论
+const COMMENT_TOTAL_LIMIT = 50; // 总共最多发表50条评论
+
 // 拖拽彩蛋相关变量
 let dragStartX = 0;
 let dragStartTime = 0;
@@ -580,6 +584,9 @@ function resetCommissionForm() {
   
   // 创建新的联系方式
   createDefaultContact();
+  
+  // 设置截止日期默认值为空
+  document.getElementById('expiryDate').value = '';
 }
 
 // 创建默认联系方式项
@@ -694,9 +701,194 @@ async function loadMyCommissions() {
     const filteredCommissions = filterCommissionsByLocation(commissions, currentLocation);
     
     renderCommissionsList(filteredCommissions, myCommissions);
+    
+    // 更新使用限制信息
+    await updateLimitsInfo();
   } catch (error) {
     console.error('加载我的委托失败:', error);
     showCustomAlert('加载个人委托列表失败，请尝试刷新页面', '网络错误');
+  }
+}
+
+// 更新使用限制信息
+async function updateLimitsInfo() {
+  try {
+    console.log('正在更新使用限制信息...');
+    
+    // 更新委托限制信息
+    const commissionLimitStatus = await checkCommissionLimit();
+    console.log('委托限制状态:', commissionLimitStatus);
+    
+    // 更新数值显示
+    const dailyCountElement = document.getElementById('daily-commission-count');
+    const totalCountElement = document.getElementById('total-commission-count');
+    const progressElement = document.getElementById('commission-limit-progress');
+    
+    if (dailyCountElement && totalCountElement && progressElement) {
+      dailyCountElement.textContent = commissionLimitStatus.dailyCount;
+      totalCountElement.textContent = commissionLimitStatus.totalCount;
+      
+      // 更新进度条，使用总数量的百分比
+      const progressPercentage = (commissionLimitStatus.totalCount / COMMISSION_TOTAL_LIMIT) * 100;
+      progressElement.style.width = `${progressPercentage}%`;
+      
+      // 根据接近限制的程度改变颜色
+      if (progressPercentage > 80) {
+        progressElement.style.backgroundColor = 'var(--warning-color)';
+      } 
+      if (progressPercentage > 95) {
+        progressElement.style.backgroundColor = 'var(--danger-color)';
+      }
+    }
+    
+    // 更新评论限制信息
+    const commentLimitStatus = await checkCommentLimit();
+    console.log('评论限制状态:', commentLimitStatus);
+    
+    const dailyCommentCountElement = document.getElementById('daily-comment-count');
+    const totalCommentCountElement = document.getElementById('total-comment-count');
+    const commentProgressElement = document.getElementById('comment-limit-progress');
+    
+    if (dailyCommentCountElement && totalCommentCountElement && commentProgressElement) {
+      dailyCommentCountElement.textContent = commentLimitStatus.dailyCount;
+      totalCommentCountElement.textContent = commentLimitStatus.totalCount;
+      
+      // 更新评论进度条
+      const commentProgressPercentage = (commentLimitStatus.totalCount / COMMENT_TOTAL_LIMIT) * 100;
+      commentProgressElement.style.width = `${commentProgressPercentage}%`;
+      
+      // 根据接近限制的程度改变颜色
+      if (commentProgressPercentage > 80) {
+        commentProgressElement.style.backgroundColor = 'var(--warning-color)';
+      } 
+      if (commentProgressPercentage > 95) {
+        commentProgressElement.style.backgroundColor = 'var(--danger-color)';
+      }
+    }
+    
+    // 如果达到任一限制，添加视觉提示
+    const limitsInfo = document.getElementById('limits-info');
+    if (limitsInfo) {
+      if (commissionLimitStatus.dailyLimitReached || 
+          commissionLimitStatus.totalLimitReached ||
+          commentLimitStatus.dailyLimitReached ||
+          commentLimitStatus.totalLimitReached) {
+        limitsInfo.classList.add('limits-reached');
+      } else {
+        limitsInfo.classList.remove('limits-reached');
+      }
+    }
+    
+    // 检查API设置状态
+    const settings = await window.api.getSettings();
+    const apiRequiredTip = document.querySelector('.api-required-tip');
+    
+    if (apiRequiredTip) {
+      if (!settings.apiEndpoints || settings.apiEndpoints.length === 0) {
+        apiRequiredTip.style.display = 'block';
+        apiRequiredTip.innerHTML = '<i class="fas fa-exclamation-circle"></i> <span data-original="需要设置自定义API后才能发表评论">需要设置自定义API后才能发表评论</span>';
+        
+        // 如果处于文言文模式，立即转换文本
+        if (localStorage.getItem('classicalChineseMode') === 'active') {
+          const textElement = apiRequiredTip.querySelector('span[data-original]');
+          if (textElement) {
+            const originalText = textElement.getAttribute('data-original');
+            textElement.textContent = translateToClassicalChinese(originalText);
+          }
+        }
+      } else {
+        apiRequiredTip.style.display = 'none';
+      }
+    }
+  } catch (error) {
+    console.error('更新限制信息失败:', error);
+  }
+}
+
+// 检查评论限制
+async function checkCommentLimit() {
+  try {
+    console.log('开始检查评论限制...');
+    
+    // 获取所有评论
+    const allMessages = await getAllUserMessages();
+    console.log(`获取到用户评论总数: ${allMessages.length}`);
+    
+    if (allMessages.length > 0) {
+      console.log('示例评论:', allMessages[0]);
+    }
+    
+    // 检查总数限制
+    const totalCount = allMessages.length;
+    const totalLimitReached = totalCount >= COMMENT_TOTAL_LIMIT;
+    
+    // 检查今日发布限制
+    const today = new Date().toISOString().split('T')[0]; // 获取当天日期，格式为YYYY-MM-DD
+    console.log('当前日期:', today);
+    
+    // 计算今天发布的评论数量
+    const todayMessages = allMessages.filter(message => {
+      const messageDate = new Date(message.timestamp).toISOString().split('T')[0];
+      return messageDate === today;
+    });
+    
+    console.log(`今日评论数量: ${todayMessages.length}`);
+    if (todayMessages.length > 0) {
+      console.log('今日评论示例:', todayMessages[0]);
+    }
+    
+    const dailyCount = todayMessages.length;
+    const dailyLimitReached = dailyCount >= COMMENT_DAILY_LIMIT;
+    
+    return {
+      dailyCount,
+      totalCount,
+      dailyLimitReached,
+      totalLimitReached
+    };
+  } catch (error) {
+    console.error('检查评论限制失败:', error);
+    return {
+      dailyCount: 0,
+      totalCount: 0,
+      dailyLimitReached: false,
+      totalLimitReached: false
+    };
+  }
+}
+
+// 获取用户的所有评论
+async function getAllUserMessages() {
+  try {
+    // 获取所有委托（包括他人的委托）
+    const commissions = await window.api.getCommissions();
+    
+    // 存储所有消息
+    let allMessages = [];
+    
+    // 获取当前设备ID
+    const deviceId = await window.api.getDeviceId();
+    
+    // 遍历每个委托，获取其中用户发布的消息
+    for (const commission of commissions) {
+      try {
+        const messages = await window.api.getMessages(commission.id);
+        
+        // 只添加由当前设备发送的消息
+        const userMessages = messages.filter(msg => msg.deviceId === deviceId);
+        
+        allMessages = allMessages.concat(userMessages);
+      } catch (error) {
+        console.error(`获取委托 ${commission.id} 的消息失败:`, error);
+        // 继续处理其他委托
+      }
+    }
+    
+    console.log(`获取到${allMessages.length}条用户评论，设备ID: ${deviceId}`);
+    return allMessages;
+  } catch (error) {
+    console.error('获取所有评论失败:', error);
+    return [];
   }
 }
 
@@ -705,7 +897,9 @@ async function loadMyMessages() {
   myMessages.innerHTML = '';
   
   try {
+    console.log('开始加载我的消息记录...');
     const commissions = await window.api.getMyCommissions();
+    console.log(`获取到${commissions.length}个委托`);
     
     // 创建消息记录容器
     const messagesContainer = document.createElement('div');
@@ -714,53 +908,97 @@ async function loadMyMessages() {
     // 对于每个委托，获取其消息
     for (const commission of commissions) {
       try {
-      const messages = await window.api.getMessages(commission.id);
-      
-      if (messages.length > 0) {
-        // 创建委托消息组
-        const commissionMessages = document.createElement('div');
-        commissionMessages.className = 'commission-messages';
+        console.log(`加载委托 ${commission.id} 的消息`);
+        const messages = await window.api.getMessages(commission.id);
+        console.log(`委托 ${commission.id} 的消息数量: ${messages.length}`);
         
-        // 添加委托标题
-        const title = document.createElement('h4');
-        title.textContent = commission.title;
-        title.className = 'commission-message-title';
-        title.addEventListener('click', () => {
-          showCommissionDetail(commission.id);
-        });
-        
-        commissionMessages.appendChild(title);
-        
-        // 添加消息列表
-        const messagesList = document.createElement('div');
-        messagesList.className = 'messages-list';
-        
-        // 只显示最近的3条消息
-        const recentMessages = messages.slice(-3);
-        
-        for (const msg of recentMessages) {
-          const messageItem = document.createElement('div');
-          messageItem.className = 'message-item';
-          messageItem.innerHTML = `
-            <div class="message-content">${msg.content}</div>
-            <div class="message-time">${formatDate(msg.timestamp)}</div>
-          `;
-          messagesList.appendChild(messageItem);
-        }
-        
-        if (messages.length > 3) {
-          const moreLink = document.createElement('div');
-          moreLink.className = 'more-messages';
-          moreLink.textContent = `查看更多 (${messages.length - 3} 条)`;
-          moreLink.addEventListener('click', () => {
+        if (messages && messages.length > 0) {
+          // 创建委托消息组
+          const commissionMessages = document.createElement('div');
+          commissionMessages.className = 'commission-messages';
+          
+          // 添加委托标题
+          const title = document.createElement('h4');
+          title.textContent = commission.title;
+          title.className = 'commission-message-title';
+          title.addEventListener('click', () => {
             showCommissionDetail(commission.id);
           });
-          messagesList.appendChild(moreLink);
-        }
-        
-        commissionMessages.appendChild(messagesList);
-        messagesContainer.appendChild(commissionMessages);
-        messagesContainer.appendChild(messageItem);
+          
+          commissionMessages.appendChild(title);
+          
+          // 添加消息列表
+          const messagesList = document.createElement('div');
+          messagesList.className = 'messages-list';
+          
+          // 只显示最近的3条消息
+          const recentMessages = messages.slice(-3);
+          
+          for (const msg of recentMessages) {
+            console.log('消息内容对象:', msg);
+            const messageItem = document.createElement('div');
+            messageItem.className = 'message-item';
+            
+            // 确保消息内容存在并且是有效字符串
+            let content = '(空消息)';
+            if (msg && typeof msg.content === 'string' && msg.content.trim() !== '') {
+              content = msg.content;
+            } else {
+              console.warn('消息内容无效或为空:', msg);
+            }
+            const timestamp = msg && msg.timestamp ? formatDate(msg.timestamp) : '未知时间';
+            
+            // 创建消息主体容器
+            const messageBody = document.createElement('div');
+            messageBody.className = 'message-body';
+            messageBody.innerHTML = `
+              <div class="message-content">${escapeHtml(content)}</div>
+              <div class="message-time">${timestamp}</div>
+            `;
+            
+            // 创建删除按钮
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete-message-btn';
+            deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
+            deleteButton.title = '删除消息';
+            
+            // 阻止删除按钮的点击事件冒泡到消息项
+            deleteButton.addEventListener('click', (e) => {
+              e.stopPropagation();
+              deleteUserMessage(commission.id, msg.id);
+            });
+            
+            // 将删除按钮和消息主体添加到消息项
+            messageItem.appendChild(deleteButton);
+            messageItem.appendChild(messageBody);
+            
+            // 添加右键菜单事件
+            messageItem.addEventListener('contextmenu', (e) => {
+              e.preventDefault(); // 阻止默认右键菜单
+              deleteUserMessage(commission.id, msg.id); // 调用删除功能
+            });
+            
+            // 添加点击事件处理程序，点击消息项时跳转到对应的委托详情页面
+            messageItem.addEventListener('click', () => {
+              console.log(`点击消息项，准备跳转到委托[${commission.id}]的详情页面`);
+              showCommissionDetail(commission.id);
+            });
+            
+            messagesList.appendChild(messageItem);
+          }
+          
+          if (messages.length > 3) {
+            const moreLink = document.createElement('div');
+            moreLink.className = 'more-messages';
+            moreLink.textContent = `查看更多 (${messages.length - 3} 条)`;
+            moreLink.addEventListener('click', () => {
+              showCommissionDetail(commission.id);
+            });
+            messagesList.appendChild(moreLink);
+          }
+          
+          commissionMessages.appendChild(messagesList);
+          messagesContainer.appendChild(commissionMessages);
         }
       } catch (msgError) {
         console.error(`加载委托 ${commission.id} 的消息失败:`, msgError);
@@ -901,6 +1139,15 @@ function renderCommissionsList(commissions, container) {
         expirySpan.className = 'expiry-info';
         expirySpan.textContent = `有效期: ${daysLeft} 天`;
         dateDiv.appendChild(expirySpan);
+        
+        // 添加截止日期信息
+        const lineBreak2 = document.createElement('br');
+        dateDiv.appendChild(lineBreak2);
+        
+        const expiryDateSpan = document.createElement('span');
+        expiryDateSpan.className = 'expiry-info';
+        expiryDateSpan.textContent = `截止日期: ${formatDate(commission.expiryDate)}`;
+        dateDiv.appendChild(expiryDateSpan);
       }
     } else {
       dateDiv.textContent = formatDate(commission.createdAt);
@@ -932,6 +1179,13 @@ function renderCommissionsList(commissions, container) {
 
 // 加载委托详情
 async function showCommissionDetail(id) {
+  if (!id) {
+    console.error('showCommissionDetail: 无效的委托ID');
+    showCustomAlert('无法显示委托详情：无效的委托ID', '错误');
+    return;
+  }
+  
+  console.log(`正在加载委托详情，ID: ${id}`);
   currentCommissionId = id;
   
   try {
@@ -953,15 +1207,21 @@ async function showCommissionDetail(id) {
     likeCount.textContent = '0';
     dislikeCount.textContent = '0';
     
+    console.log(`正在从API获取委托信息，ID: ${id}`);
     const commission = await window.api.getCommission(id);
     
     if (!commission || commission.error) {
-      showCustomAlert('无法加载委托详情', '错误');
+      console.error('获取委托详情失败:', commission?.error || '未找到委托');
+      showCustomAlert('无法加载委托详情：' + (commission?.message || '委托不存在'), '错误');
       return;
     }
     
+    console.log('委托信息获取成功:', commission);
+    
     // 加载委托赞踩信息
+    console.log(`正在获取赞踩信息，ID: ${id}`);
     const ratings = await window.api.getCommissionRatings(id);
+    console.log('赞踩信息:', ratings);
     
     // 更新赞踩计数
     likeCount.textContent = ratings.likes || '0';
@@ -1033,6 +1293,7 @@ async function showCommissionDetail(id) {
       } else {
         const daysLeft = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
         dateInfo += `<br><span class="expiry-info">有效期：${daysLeft} 天</span>`;
+        dateInfo += `<br><span class="expiry-info">截止日期：${formatDate(commission.expiryDate)}</span>`;
       }
     }
     
@@ -1042,10 +1303,12 @@ async function showCommissionDetail(id) {
     renderAdditionalFiles(commission);
     
     // 加载聊天消息
+    console.log(`正在加载聊天消息，委托ID: ${id}`);
     await loadChatMessages(id);
+    console.log('委托详情加载完成');
   } catch (error) {
     console.error('加载委托详情出错:', error);
-    showCustomAlert('加载详情失败，请稍后再试', '错误');
+    showCustomAlert(`加载详情失败: ${error.message || '未知错误'}，请稍后再试`, '请求处理过程中发生错误');
   }
 }
 
@@ -1064,18 +1327,28 @@ function getContactTypeLabel(type) {
 // 加载聊天消息
 async function loadChatMessages(commissionId) {
   try {
+    console.log(`开始加载委托[${commissionId}]的聊天消息`);
+    if (!commissionId) {
+      console.error('loadChatMessages: 委托ID为空');
+      return;
+    }
+    
     const messages = await window.api.getMessages(commissionId);
+    console.log(`成功获取委托[${commissionId}]的消息:`, messages);
+    
     renderChatMessages(messages);
   } catch (error) {
-    console.error('加载聊天消息失败:', error);
+    console.error(`加载委托[${commissionId}]聊天消息失败:`, error);
+    showCustomAlert(`加载聊天消息失败: ${error.message || '未知错误'}`, '网络错误');
   }
 }
 
 // 渲染聊天消息
 function renderChatMessages(messages) {
   chatMessages.innerHTML = '';
+  console.log('渲染聊天消息：', messages);
   
-  if (messages.length === 0) {
+  if (!messages || messages.length === 0) {
     const emptyMessage = document.createElement('div');
     emptyMessage.className = 'empty-message';
     emptyMessage.textContent = '暂无消息';
@@ -1083,18 +1356,86 @@ function renderChatMessages(messages) {
     return;
   }
   
-  for (const msg of messages) {
-    const messageElement = document.createElement('div');
-    messageElement.className = 'message';
-    messageElement.innerHTML = `
-      <div class="message-content">${escapeHtml(msg.content)}</div>
-      <div class="message-time">${formatDate(msg.timestamp)}</div>
-    `;
-    chatMessages.appendChild(messageElement);
-  }
-  
-  // 滚动到底部
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  // 获取当前设备ID，用于区分自己的消息
+  window.api.getDeviceId().then(deviceId => {
+    for (const msg of messages) {
+      console.log('处理聊天消息：', msg);
+      
+      // 确保消息内容存在并且是有效字符串
+      let content = '(空消息)';
+      if (msg && typeof msg.content === 'string' && msg.content.trim() !== '') {
+        content = msg.content;
+      } else {
+        console.warn('聊天消息内容无效或为空:', msg);
+      }
+      
+      const messageElement = document.createElement('div');
+      
+      // 根据设备ID判断是否是自己的消息
+      const isSelfMessage = msg && msg.deviceId === deviceId;
+      messageElement.className = `message ${isSelfMessage ? 'message-self' : 'message-other'}`;
+      
+      // 创建消息内容容器
+      const messageContent = document.createElement('div');
+      messageContent.className = 'message-content';
+      messageContent.innerHTML = escapeHtml(content);
+      
+      // 创建消息时间容器
+      const messageTime = document.createElement('div');
+      messageTime.className = 'message-time';
+      messageTime.textContent = msg && msg.timestamp ? formatDate(msg.timestamp) : '未知时间';
+      
+      // 添加消息内容和时间
+      messageElement.appendChild(messageContent);
+      messageElement.appendChild(messageTime);
+      
+      // 如果是自己的消息，添加删除按钮
+      if (isSelfMessage && msg.id) {
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'delete-message-btn';
+        deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
+        deleteButton.title = '删除此消息';
+        
+        // 添加删除事件
+        deleteButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteUserMessage(commission.id, msg.id);
+        });
+        
+        messageElement.appendChild(deleteButton);
+        
+        // 为自己的消息添加右键菜单删除功能
+        messageElement.addEventListener('contextmenu', (e) => {
+          e.preventDefault(); // 阻止默认右键菜单
+          deleteUserMessage(commission.id, msg.id); // 调用删除功能
+        });
+      }
+      
+      chatMessages.appendChild(messageElement);
+    }
+    
+    // 滚动到底部
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }).catch(error => {
+    console.error('获取设备ID失败:', error);
+    // 即使获取设备ID失败，也继续显示消息
+    for (const msg of messages) {
+      const messageElement = document.createElement('div');
+      messageElement.className = 'message message-other';
+      
+      // 确保消息内容存在
+      const content = msg && msg.content ? msg.content : '(空消息)';
+      
+      messageElement.innerHTML = `
+        <div class="message-content">${escapeHtml(content)}</div>
+        <div class="message-time">${msg && msg.timestamp ? formatDate(msg.timestamp) : '未知时间'}</div>
+      `;
+      chatMessages.appendChild(messageElement);
+    }
+    
+    // 滚动到底部
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  });
 }
 
 // 处理API错误
@@ -1706,6 +2047,11 @@ function showToast(message) {
     document.body.appendChild(toast);
   }
   
+  // 如果处于文言文模式，转换消息文本
+  if (localStorage.getItem('classicalChineseMode') === 'active') {
+    message = translateToClassicalChinese(message);
+  }
+  
   // 设置消息并显示
   toast.textContent = message;
   toast.classList.add('show');
@@ -1755,8 +2101,20 @@ document.addEventListener('click', (e) => {
 
 // 日期格式化
 function formatDate(dateString) {
-  const date = new Date(dateString);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  // 添加错误处理，避免无效日期导致NaN
+  try {
+    const date = new Date(dateString);
+    
+    // 检查日期是否有效
+    if (isNaN(date.getTime())) {
+      return '日期未知';
+    }
+    
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  } catch (error) {
+    console.error('日期格式化错误:', error, dateString);
+    return '日期未知';
+  }
 }
 
 // 给导航按钮添加动画效果
@@ -1895,6 +2253,7 @@ commissionForm.addEventListener('submit', async (e) => {
   const reward = document.getElementById('reward').value.trim();
   const city = document.getElementById('city').value;
   const contacts = collectContacts();
+  const expiryDate = document.getElementById('expiryDate').value;
   
   if (!title || !description) {
     showCustomAlert('请填写委托标题和详细内容', '表单不完整');
@@ -1919,11 +2278,33 @@ commissionForm.addEventListener('submit', async (e) => {
     }
   }
   
+  // 验证截止日期
+  if (!expiryDate) {
+    showCustomAlert('请选择委托截止日期', '表单不完整');
+    return;
+  }
+  
+  // 验证截止日期不能超过一年
+  const today = new Date();
+  const oneYearLater = new Date(today);
+  oneYearLater.setFullYear(today.getFullYear() + 1);
+  const selectedExpiryDate = new Date(expiryDate);
+  
+  if (selectedExpiryDate < today) {
+    showCustomAlert('委托截止日期不能早于今天', '日期错误');
+    return;
+  }
+  
+  if (selectedExpiryDate > oneYearLater) {
+    showCustomAlert('委托有效期最长为一年', '日期错误');
+    return;
+  }
+  
   try {
     // 先检查用户的委托发布限制
     const commissionLimitStatus = await checkCommissionLimit();
-    
-    if (commissionLimitStatus.dailyLimitReached) {
+      
+      if (commissionLimitStatus.dailyLimitReached) {
       showCustomAlert(`您今天已经发布了${COMMISSION_DAILY_LIMIT}个委托，请明天再来发布`);
       return;
     }
@@ -1951,6 +2332,9 @@ commissionForm.addEventListener('submit', async (e) => {
     // 显示发布中提示
     const publishingAlert = showLoadingAlert('委托发布中...');
     
+    // 计算从截止日期到选定日期的天数差
+    const validDays = Math.ceil((selectedExpiryDate - today) / (1000 * 60 * 60 * 24));
+    
     const newCommission = await window.api.createCommission({
       title,
       description,
@@ -1958,7 +2342,8 @@ commissionForm.addEventListener('submit', async (e) => {
       reward,
       city,
       image: currentImageData,
-      additionalFiles: additionalFiles
+      additionalFiles: additionalFiles,
+      validDays: validDays // 添加有效天数
     });
     
     // 关闭发布中提示
@@ -2189,14 +2574,43 @@ async function deleteCommission(id) {
   }
 }
 
+// 初始化截止日期选择器
+function initExpiryDatePicker() {
+  const expiryDateInput = document.getElementById('expiryDate');
+  if (!expiryDateInput) return;
+  
+  // 设置最小日期为今天
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  expiryDateInput.min = todayStr;
+  
+  // 设置最大日期为一年后
+  const oneYearLater = new Date(today);
+  oneYearLater.setFullYear(today.getFullYear() + 1);
+  const oneYearLaterStr = oneYearLater.toISOString().split('T')[0];
+  expiryDateInput.max = oneYearLaterStr;
+  
+  // 设置默认值为30天后
+  const defaultDate = new Date(today);
+  defaultDate.setDate(today.getDate() + 30);
+  const defaultDateStr = defaultDate.toISOString().split('T')[0];
+  expiryDateInput.value = defaultDateStr;
+}
+
 // 初始化应用
 async function initApp() {
   await loadSettings();
   showTab('home');
   addNavButtonsAnimation();
   
+  // 初始化限制信息
+  await updateLimitsInfo();
+  
   // 设置全屏监听
   setupFullscreenListener();
+  
+  // 初始化截止日期选择器
+  initExpiryDatePicker();
   
   // 重置彩蛋会话标识
   easterEggActivatedThisSession = false;
@@ -2345,7 +2759,7 @@ function findAndAttachToSystemButtons() {
         console.log('找到可能的最大化/全屏按钮:', maximizeButton);
         maximizeButton.addEventListener('click', handleFullscreenButtonClick);
       }
-  } else {
+      } else {
       // 如果按钮少于3个，为所有按钮添加监听
       buttons.forEach((button, index) => {
         button.addEventListener('click', function() {
@@ -2629,8 +3043,8 @@ async function sendChatMessage() {
   // 阻止过长消息
   if (message.length > 500) {
     showCustomAlert('消息长度不能超过500个字符', '消息过长');
-      return;
-    }
+    return;
+  }
     
   try {
     // 检查是否设置了API
@@ -2646,10 +3060,29 @@ async function sendChatMessage() {
       return;
     }
     
+    // 检查评论限制
+    const commentLimitStatus = await checkCommentLimit();
+    
+    if (commentLimitStatus.dailyLimitReached) {
+      showCustomAlert(`您今天已经发表了${COMMENT_DAILY_LIMIT}条评论，请明天再来发表`, '评论限制');
+      return;
+    }
+    
+    if (commentLimitStatus.totalLimitReached) {
+      showCustomAlert(`您总共已经发表了${COMMENT_TOTAL_LIMIT}条评论，已达到上限`, '评论限制');
+      return;
+    }
+    
     // 显示发送中状态
     const sendingToast = showToast('发送中...');
     
-    const response = await window.api.addMessage(currentCommissionId, message);
+    console.log(`准备发送消息 - 委托ID: ${currentCommissionId}, 消息内容: ${message}`);
+    
+    // 确保发送字符串类型的消息内容
+    const messageContent = String(message).trim();
+    const response = await window.api.addMessage(currentCommissionId, messageContent);
+    
+    console.log('发送消息的响应:', response);
     
     // 检查是否有错误
     if (await handleApiError(response)) {
@@ -2663,9 +3096,12 @@ async function sendChatMessage() {
     
     // 显示成功提示
     showToast('消息已发送');
+    
+    // 无论在哪个页面发送评论，都更新评论限制信息
+    await updateLimitsInfo();
   } catch (error) {
     console.error('发送消息失败:', error);
-    showCustomAlert('发送消息失败，请稍后再试', '网络错误');
+    showCustomAlert(`发送消息失败: ${error.message || '未知错误'}，请稍后再试`, '网络错误');
   }
 }
 
@@ -3665,50 +4101,65 @@ function addClassicalChineseDecorativeElements() {
 
 // 转换现有文本
 function transformExistingText() {
-  // 选择需要转换的元素
-  const elements = document.querySelectorAll(
-    '.commission-card h3, .description, .card-info, .date, ' +
-    '.detail-title, #detail-description, #detail-contacts, #detail-reward, #detail-city, #detail-date, ' +
-    '.message-content, .empty-message, .alert-title, .alert-content, ' +
-    'button:not(.search-circle-btn), h2, h3, h4, .api-tip, .city-tip, ' +
-    '.location-dropdown-header span, .location-category, .location-option span'
-  );
+  console.log('开始转换现有文本为文言文...');
   
-  elements.forEach((element, index) => {
-    // 跳过已经处理过的元素
-    if (element.dataset.classicalProcessed) return;
-    
-    // 保存原始文本
-    const key = `element-${index}-${Date.now()}`;
-    originalTexts[key] = element.textContent;
-    element.dataset.originalTextKey = key;
-    
-    // 转换为文言文
-    element.textContent = translateToClassicalChinese(element.textContent);
-    
-    // 标记为已处理
-    element.dataset.classicalProcessed = 'true';
+  // 查找所有带data-original属性的元素
+  const elementsWithOriginal = document.querySelectorAll('[data-original]');
+  console.log(`找到 ${elementsWithOriginal.length} 个带有原始文本记录的元素`);
+  
+  // 优先处理带有data-original属性的元素
+  elementsWithOriginal.forEach(element => {
+    const originalText = element.getAttribute('data-original');
+    if (originalText) {
+      element.textContent = translateToClassicalChinese(originalText);
+    }
   });
+  
+  // 使用选择器查找所有需要转换的文本节点
+  const elementsToTransform = Array.from(document.querySelectorAll('*'))
+    .filter(element => shouldTransformElement(element) && !element.hasAttribute('data-original'));
+  
+  console.log(`找到 ${elementsToTransform.length} 个需要转换的元素`);
+  
+  // 转换这些元素的文本
+  elementsToTransform.forEach(element => {
+    if (element.childNodes && element.childNodes.length > 0) {
+      // 处理文本节点
+      element.childNodes.forEach(node => {
+        if (node.nodeType === 3) { // 文本节点
+          const originalText = node.nodeValue.trim();
+          if (originalText) {
+            // 保存原始文本并转换
+            if (!element.hasAttribute('data-original')) {
+              element.setAttribute('data-original', originalText);
+            }
+            node.nodeValue = translateToClassicalChinese(originalText);
+          }
+        }
+      });
+    }
+  });
+
+  console.log('文本转换完成');
 }
 
 // 恢复原始文本
 function restoreOriginalText() {
-  // 选择所有被处理过的元素
-  const elements = document.querySelectorAll('[data-classical-processed="true"]');
+  console.log('恢复原始文本...');
   
-  elements.forEach(element => {
-    const key = element.dataset.originalTextKey;
-    if (key && originalTexts[key]) {
-      element.textContent = originalTexts[key];
+  // 查找所有带有data-original属性的元素
+  const elementsWithOriginal = document.querySelectorAll('[data-original]');
+  console.log(`找到 ${elementsWithOriginal.length} 个带有原始文本记录的元素`);
+  
+  // 恢复原始文本
+  elementsWithOriginal.forEach(element => {
+    const originalText = element.getAttribute('data-original');
+    if (originalText) {
+      element.textContent = originalText;
     }
-    
-    // 移除标记
-    element.removeAttribute('data-classical-processed');
-    element.removeAttribute('data-original-text-key');
   });
   
-  // 清空原始文本存储
-  originalTexts = {};
+  console.log('原始文本恢复完成');
 }
 
 // 设置文本变化监听器
@@ -3752,41 +4203,46 @@ function setupTextObserver() {
 
 // 处理新添加的元素
 function processNewElement(element) {
-  // 检查是否应该转换这个元素
-  if (shouldTransformElement(element)) {
-    // 保存原始文本
-    const key = `element-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    originalTexts[key] = element.textContent;
-    element.dataset.originalTextKey = key;
-    
-    // 转换为文言文
-    element.textContent = translateToClassicalChinese(element.textContent);
-    
-    // 标记为已处理
-    element.dataset.classicalProcessed = 'true';
+  // 如果元素有data-original属性，直接使用它
+  if (element.hasAttribute('data-original')) {
+    const originalText = element.getAttribute('data-original');
+    element.textContent = translateToClassicalChinese(originalText);
+    return;
+  }
+  
+  // 检查元素是否应该被转换
+  if (!shouldTransformElement(element)) return;
+  
+  // 保存原始文本内容
+  const originalText = element.textContent.trim();
+  if (originalText) {
+    element.setAttribute('data-original', originalText);
+    element.textContent = translateToClassicalChinese(originalText);
   }
   
   // 递归处理子元素
-  element.childNodes.forEach(child => {
-    if (child.nodeType === 1) { // 元素节点
-      processNewElement(child);
-    }
+  Array.from(element.children).forEach(child => {
+    processNewElement(child);
   });
 }
 
 // 判断元素是否应该被转换
 function shouldTransformElement(element) {
-  // 跳过输入元素、含有用户输入的元素、搜索按钮、已处理的元素
-  if (element.tagName === 'INPUT' || 
+  // 如果是<script>、<style>标签，或者是表单输入元素，不进行转换
+  if (element.tagName === 'SCRIPT' || 
+      element.tagName === 'STYLE' || 
+      element.tagName === 'INPUT' || 
       element.tagName === 'TEXTAREA' || 
-      element.classList.contains('search-circle-btn') ||
-      element.dataset.classicalProcessed) {
+      element.nodeName === '#comment' ||
+      element.classList.contains('kaomoji')) {
     return false;
   }
   
-  // 检查元素是否属于要转换的类型
+  // 使用 CSS 选择器匹配需要转换的元素
   const selector = 
-    '.commission-card h3, .description, .card-info, .date, ' +
+    '.commission-title, .commission-description, .commission-location, .commission-date, ' +
+    '.nav-item span, .tab-text, .panel-header, .empty-message, p, label, ' +
+    '.contact-label, .contact-tooltip, .page-title, .limit-label, .limit-tip, .limit-value, ' +
     '.detail-title, #detail-description, #detail-contacts, #detail-reward, #detail-city, #detail-date, ' +
     '.message-content, .empty-message, .alert-title, .alert-content, ' +
     'button:not(.search-circle-btn), h2, h3, h4, .api-tip, .city-tip, ' +
@@ -3994,6 +4450,34 @@ function translateToClassicalChinese(text) {
     '建议': '倡议',
     '推荐': '荐举',
     '拒绝': '拒却',
+    // 使用限制信息面板相关文言文翻译
+    '使用限制信息': '使用约束详情',
+    '今日委托发布': '今日令书颁布',
+    '总委托数量': '总令书数目',
+    '每天最多发布2个委托，同时最多拥有10个委托': '每日最多颁布两份令书，同时最多持有十份令书',
+    '超过限制将无法继续发布委托': '逾越约束则无法继续颁布令书',
+    '今日评论数量': '今日评鉴数目',
+    '总评论数量': '总评鉴数目',
+    '每天最多发表10条评论，总评论上限为50条': '每日最多著十条评鉴，总评鉴不超五十条',
+    '需要设置自定义API后才能发表评论': '需设定自定义接口方可著评鉴',
+    '限制': '约束',
+    // 额外的使用限制相关翻译
+    '评论数量': '评鉴数目',
+    '委托数量': '令书数目',
+    '最多': '至多',
+    '发表': '著',
+    '上限': '极限',
+    '设置自定义': '设定自定义',
+    '后才能': '方可',
+    '需要': '需',
+    // 删除确认对话框翻译
+    '删除确认': '删去确认',
+    '确定要删除这条消息吗？此操作不可撤销。': '确欲删去此音讯乎？此举不可挽回也。',
+    '确认删除': '确认删去',
+    '正在删除消息': '正删去音讯',
+    '消息已删除': '音讯已除去',
+    '操作未完成': '举措未竟',
+    '不可撤销': '不可挽回'
   };
   
   // 特殊短语替换（整句替换）
@@ -5103,4 +5587,115 @@ function createAngryEmoji(container, emojisArray) {
   
   return emoji;
 }
-  
+
+// 删除用户消息
+async function deleteUserMessage(commissionId, messageId) {
+  try {
+    console.log(`尝试删除消息，委托ID: ${commissionId}，消息ID: ${messageId || '未提供'}`);
+    
+    // 创建自定义确认对话框
+    const confirmBox = document.createElement('div');
+    confirmBox.className = 'custom-alert';
+    
+    const confirmMessage = document.createElement('div');
+    confirmMessage.className = 'alert-message';
+    
+    const alertTitle = document.createElement('div');
+    alertTitle.className = 'alert-title';
+    alertTitle.setAttribute('data-original', '删除确认');
+    alertTitle.textContent = '删除确认';
+    confirmMessage.appendChild(alertTitle);
+    
+    const alertContent = document.createElement('div');
+    alertContent.className = 'alert-content';
+    alertContent.setAttribute('data-original', '确定要删除这条消息吗？此操作不可撤销。');
+    alertContent.textContent = '确定要删除这条消息吗？此操作不可撤销。';
+    confirmMessage.appendChild(alertContent);
+    
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'alert-buttons';
+    
+    const cancelButton = document.createElement('button');
+    cancelButton.className = 'alert-button cancel-button';
+    cancelButton.setAttribute('data-original', '取消');
+    cancelButton.textContent = '取消';
+    cancelButton.addEventListener('click', () => {
+      document.body.removeChild(confirmBox);
+    });
+    
+    const confirmButton = document.createElement('button');
+    confirmButton.className = 'alert-button confirm-button';
+    confirmButton.setAttribute('data-original', '确认删除');
+    confirmButton.textContent = '确认删除';
+    confirmButton.addEventListener('click', async () => {
+      try {
+        // 显示加载提示
+        showToast('正在删除消息...');
+        
+        // 关闭确认框
+        document.body.removeChild(confirmBox);
+        
+        // 调用API删除消息
+        const result = await window.api.deleteMessage(commissionId, messageId);
+        console.log('删除消息API响应:', result);
+        
+        if (result.error) {
+          console.error(`删除消息失败: ${result.error} - ${result.message}`);
+          showCustomAlert(`删除失败: ${result.message}`, '操作未完成');
+          return;
+        }
+        
+        // 成功删除后刷新消息列表
+        showToast('消息已删除');
+        console.log('消息删除成功，准备刷新消息列表');
+        
+        // 刷新消息列表
+        loadMyMessages();
+        
+        // 如果当前在委托详情页面，也刷新聊天消息
+        if (currentCommissionId === commissionId) {
+          console.log('当前在委托详情页面，刷新聊天消息');
+          loadChatMessages(commissionId);
+        }
+      } catch (error) {
+        console.error('删除消息时发生错误:', error);
+        showCustomAlert(`删除消息失败: ${error.message || '未知错误'}`, '错误');
+      }
+    });
+    
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(confirmButton);
+    
+    confirmBox.appendChild(confirmMessage);
+    confirmBox.appendChild(buttonContainer);
+    document.body.appendChild(confirmBox);
+    
+    // 如果处于文言文模式，立即转换文本
+    if (localStorage.getItem('classicalChineseMode') === 'active') {
+      const elementsToTranslate = confirmBox.querySelectorAll('[data-original]');
+      elementsToTranslate.forEach(element => {
+        const originalText = element.getAttribute('data-original');
+        if (originalText) {
+          element.textContent = translateToClassicalChinese(originalText);
+        }
+      });
+    }
+    
+    // 动画显示
+    setTimeout(() => {
+      confirmBox.classList.add('show');
+    }, 10);
+    
+    // 点击背景关闭
+    confirmBox.addEventListener('click', function(e) {
+      if (e.target === confirmBox) {
+        document.body.removeChild(confirmBox);
+      }
+    });
+    
+  } catch (error) {
+    console.error('删除消息时发生错误:', error);
+    showCustomAlert(`删除消息失败: ${error.message || '未知错误'}`, '错误');
+  }
+}
+      

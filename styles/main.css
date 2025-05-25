@@ -496,6 +496,91 @@ header h1 {
   cursor: pointer;
 }
 
+/* 使用限制信息面板样式 */
+.limits-panel {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.limits-info {
+  padding: 5px 0;
+}
+
+.limit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 5px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.limit-label {
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.limit-value {
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.limit-progress-container {
+  height: 6px;
+  background-color: var(--hover-color);
+  border-radius: 3px;
+  margin: 15px 0;
+  overflow: hidden;
+}
+
+.limit-progress {
+  height: 100%;
+  background-color: var(--primary-color);
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.limit-tip {
+  font-size: 12px;
+  color: #888;
+  margin: 5px 0;
+}
+
+.api-required-tip {
+  color: var(--primary-color);
+  font-weight: 500;
+  background-color: rgba(var(--primary-color-rgb), 0.1);
+  padding: 5px 10px;
+  border-radius: 4px;
+  border-left: 3px solid var(--primary-color);
+  margin: 10px 0;
+}
+
+.limit-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 15px 0;
+  opacity: 0.5;
+}
+
+.limits-reached {
+  position: relative;
+}
+
+.limits-reached::after {
+  content: '已达限制';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: var(--danger-color);
+  color: white;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  transform: rotate(10deg);
+  animation: pulse 1s infinite;
+}
+
 /* 表单样式 */
 .form-group {
   margin-bottom: 25px;
@@ -737,7 +822,7 @@ header h1 {
 }
 
 /* 城市选择样式 */
-.city-selection {
+.city-select-container {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -748,6 +833,23 @@ header h1 {
 }
 
 .city-tip {
+  font-size: 13px;
+  color: #888;
+  margin-left: 5px;
+}
+
+/* 截止日期样式 */
+.expiry-date-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#expiryDate {
+  height: 45px;
+}
+
+.expiry-tip {
   font-size: 13px;
   color: #888;
   margin-left: 5px;
@@ -884,6 +986,7 @@ button[type="submit"]:active {
   padding: 10px;
   border-radius: 8px;
   max-width: 80%;
+  position: relative;
 }
 
 .message-self {
@@ -1035,13 +1138,20 @@ button[type="submit"]:active {
 .contact-type {
   width: 100%;
   max-width: 200px;
-  height: 40px;
+  height: 42px;
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  padding: 0 10px;
+  padding: 8px 30px 8px 10px;
   background-color: var(--card-background);
   color: var(--text-color);
   transition: all 0.3s ease;
+  text-align: left;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='gray' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
 }
 
 /* 联系方式样式增强 */
@@ -2472,4 +2582,207 @@ body.dark-mode.classical-chinese-mode .search-button {
 /* 确保搜索框容器有相对定位 */
 .search-container {
   position: relative;
+}
+
+.contact-type option {
+  padding: 8px;
+  height: auto;
+  line-height: 1.5;
+  font-size: 15px; /* 确保字体大小合适 */
+  text-align: left;
+}
+
+/* 消息项样式 */
+.message-item {
+  padding: 10px;
+  margin-bottom: 5px;
+  background-color: #f5f5f5;
+  border-radius: 5px;
+  border-left: 3px solid #ddd;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  position: relative; /* 确保相对定位 */
+}
+
+.message-item:hover {
+  background-color: #e9e9e9;
+  transform: translateX(2px);
+}
+
+.message-item .message-content {
+  margin-bottom: 5px;
+  word-break: break-word;
+}
+
+.message-item .message-time {
+  font-size: 0.8em;
+  color: #888;
+  text-align: right;
+}
+
+body.dark-mode .message-item {
+  background-color: #2a2a2a;
+  border-left-color: #444;
+}
+
+body.dark-mode .message-item:hover {
+  background-color: #333;
+}
+
+/* 删除消息按钮样式 */
+.delete-message-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: transparent;
+  border: none;
+  color: #999;
+  font-size: 14px;
+  padding: 3px 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 2;
+}
+
+/* 消息项悬停时显示删除按钮 */
+.message-item:hover .delete-message-btn,
+.message-self:hover .delete-message-btn {
+  opacity: 1;
+}
+
+.delete-message-btn:hover {
+  color: #ff4444;
+}
+
+/* 调整消息项样式，使其保持相对定位以便定位删除按钮 */
+.message-item {
+  padding: 10px;
+  margin-bottom: 5px;
+  background-color: #f5f5f5;
+  border-radius: 5px;
+  border-left: 3px solid #ddd;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  position: relative; /* 确保相对定位 */
+}
+
+/* 聊天消息中的相对定位 */
+.message {
+  position: relative;
+}
+
+/* 确保消息体有足够的右侧边距容纳删除按钮 */
+.message-body {
+  padding-right: 30px;
+}
+
+/* 消息项右键菜单样式 */
+.message-item, .message.message-self {
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.message-item:hover::after, .message.message-self:hover::after {
+  content: '右键删除';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.message-item:hover::after, .message.message-self:hover::after {
+  opacity: 1;
+}
+
+/* 使鼠标悬停在消息上时显示可删除状态 */
+.message-item:hover, .message.message-self:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* 文言文模式下的右键菜单提示文字颜色 */
+.classical-chinese-mode .message-item:hover::after, 
+.classical-chinese-mode .message.message-self:hover::after {
+  color: #1C1C1C; /* 玄色 */
+  background-color: rgba(245, 222, 179, 0.9); /* 米色背景，增强对比度 */
+}
+
+/* 深色文言文模式下的右键菜单提示文字颜色 */
+body.dark-mode.classical-chinese-mode .message-item:hover::after, 
+body.dark-mode.classical-chinese-mode .message.message-self:hover::after {
+  color: #F5F5DC; /* 米白色 */
+  background-color: rgba(58, 47, 37, 0.9); /* 深褐色背景，增强对比度 */
+}
+
+/* 文言文模式下的Toast消息文字颜色 */
+.classical-chinese-mode .toast-message {
+  color: #1C1C1C; /* 玄色 */
+  background-color: rgba(245, 222, 179, 0.9); /* 米色背景 */
+  font-family: 'FangSong', 'STFangsong', 'SimSun', 'STSong', serif;
+}
+
+/* 深色文言文模式下的Toast消息文字颜色 */
+body.dark-mode.classical-chinese-mode .toast-message {
+  color: #F5F5DC; /* 米白色 */
+  background-color: rgba(58, 47, 37, 0.9); /* 深褐色背景 */
+}
+
+/* 文言文模式下的Alert消息文字颜色 */
+.classical-chinese-mode .alert-content {
+  color: #1C1C1C; /* 玄色 */
+  font-family: 'FangSong', 'STFangsong', 'SimSun', 'STSong', serif;
+}
+
+/* 文言文模式下的Alert标题颜色 */
+.classical-chinese-mode .alert-title {
+  color: #8B4513; /* 棕色，更符合文言文风格 */
+  font-family: 'FangSong', 'STFangsong', 'SimSun', 'STSong', serif;
+  border-bottom: 1px solid #D2B48C; /* 浅棕色边框 */
+}
+
+/* 深色文言文模式下的Alert消息文字颜色 */
+body.dark-mode.classical-chinese-mode .alert-content {
+  color: #F5F5DC; /* 米白色 */
+}
+
+/* 深色文言文模式下的Alert标题颜色 */
+body.dark-mode.classical-chinese-mode .alert-title {
+  color: #D2B48C; /* 淡棕褐色，更符合深色文言文风格 */
+  border-bottom: 1px solid #8B4513; /* 深棕色边框 */
+}
+
+/* 文言文模式下的删除消息按钮样式 */
+.classical-chinese-mode .delete-message-btn {
+  color: #8B4513; /* 棕色 */
+  background: transparent;
+  font-size: 14px;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.classical-chinese-mode .message-item:hover .delete-message-btn,
+.classical-chinese-mode .message.message-self:hover .delete-message-btn {
+  opacity: 0.8;
+}
+
+.classical-chinese-mode .delete-message-btn:hover {
+  color: #b22222; /* 火砖红 */
+  transform: scale(1.1);
+}
+
+/* 深色文言文模式下的删除消息按钮样式 */
+body.dark-mode.classical-chinese-mode .delete-message-btn {
+  color: #D2B48C; /* 淡棕褐色 */
+}
+
+body.dark-mode.classical-chinese-mode .delete-message-btn:hover {
+  color: #ff8c69; /* 橙红色，深色模式下更柔和 */
 }

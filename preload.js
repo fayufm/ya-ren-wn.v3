@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('api', {
   // 消息相关
   getMessages: (commissionId) => safeIpcCall('get-messages', commissionId),
   addMessage: (commissionId, message) => safeIpcCall('add-message', { commissionId, message }),
+  deleteMessage: (commissionId, messageId) => safeIpcCall('delete-message', { commissionId, messageId }),
   
   // 设置相关
   getSettings: () => safeIpcCall('get-settings'),
@@ -56,6 +57,7 @@ contextBridge.exposeInMainWorld('api', {
   // 系统信息
   getPlatform: () => process.platform,
   getAppVersion: () => safeIpcCall('get-app-version'),
+  getDeviceId: () => safeIpcCall('get-device-id'),
   
   // 其他辅助功能
   showErrorDialog: (title, message) => safeIpcCall('show-error-dialog', { title, message }),
@@ -67,5 +69,11 @@ contextBridge.exposeInMainWorld('api', {
     return () => {
       ipcRenderer.removeListener('theme-changed', listener);
     };
-  }
+  },
+  
+  // 检查委托限制
+  checkCommissionLimit: () => safeIpcCall('check-commission-limit'),
+  
+  // 检查评论限制
+  checkCommentLimit: () => safeIpcCall('check-comment-limit'),
 }); 

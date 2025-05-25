@@ -4,70 +4,35 @@ require = require("module").createRequire(process.cwd() + "/");
 const { app, BrowserWindow, ipcMain, Menu, session, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 
-// 导入错误处理工具
-let errorHandler;
-try {
-  errorHandler = require('./error-handler');
-} catch (err) {
-  console.error('无法加载错误处理工具:', err);
-  // 定义简单的错误处理函数作为备选
-  errorHandler = {
-    logError: (error) => console.error(error),
-    showErrorDialog: (title, message) => dialog.showErrorBox(title, message),
-    checkAppFiles: () => [],
-    safeLoadFile: async (win, file) => {
-      try {
-        await win.loadFile(file);
-        return true;
-      } catch (e) {
-        dialog.showErrorBox('加载失败', `无法加载文件: ${file}`);
-        return false;
-      }
-    }
-  };
+// 设置应用数据路径
+const appDataPath = path.join(app.getAppPath(), 'app-data');
+if (!fs.existsSync(appDataPath)) {
+  try {
+    fs.mkdirSync(appDataPath, { recursive: true });
+  } catch (err) {
+    console.error(`创建应用数据目录失败: ${err.message}`);
+  }
 }
 
-// 添加日志记录功能
+// 日志记录函数
 function log(message, type = 'info') {
-  const logTime = new Date().toISOString();
-  const logMessage = `[${logTime}][${type}] ${message}`;
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}][${type}] ${message}`;
   console.log(logMessage);
   
   try {
-    const logsDir = path.join(process.cwd(), 'app-data', 'logs');
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-    }
-    
-    const logFile = path.join(logsDir, `app-${new Date().toISOString().split('T')[0]}.log`);
-    fs.appendFileSync(logFile, logMessage + '\n');
+    const logPath = path.join(appDataPath, 'app.log');
+    fs.appendFileSync(logPath, logMessage + '\n');
   } catch (err) {
-    console.error('无法写入日志文件:', err);
+    console.error(`无法写入日志: ${err.message}`);
   }
 }
 
-// 记录应用启动信息
-log(`应用启动，版本: ${app.getVersion()}, 路径: ${process.cwd()}`);
+// 记录基本信息
 log(`Electron版本: ${process.versions.electron}, Node版本: ${process.versions.node}`);
-
-// 检查应用数据目录
-const appDataPath = path.join(process.cwd(), 'app-data');
 log(`应用数据路径: ${appDataPath}`);
-
-try {
-  if (!fs.existsSync(appDataPath)) {
-    log(`创建应用数据目录: ${appDataPath}`);
-    fs.mkdirSync(appDataPath, { recursive: true });
-  }
-} catch (err) {
-  log(`创建应用数据目录失败: ${err.message}`, 'error');
-  dialog.showErrorBox('应用启动失败', '无法创建应用数据目录，请确保应用有足够的权限。');
-  app.quit();
-}
-
-// 应用数据路径
-process.env.APP_DATA_PATH = appDataPath;
 
 // 数据文件备份和恢复机制
 function createBackup() {
@@ -205,13 +170,24 @@ let mainWindow = null;
 
 // 检查必要文件
 function checkRequiredFiles() {
+  // 必要文件列表
+  const requiredFiles = [
+    'index.html',
+    'preload.js',
+    'styles/main.css',
+    'scripts/app.js'
+  ];
+  
   // 检查必要文件是否存在
-  const missingFiles = errorHandler.checkAppFiles();
+  const missingFiles = requiredFiles.filter(file => {
+    const filePath = path.join(app.getAppPath(), file);
+    return !fs.existsSync(filePath);
+  });
   
   if (missingFiles.length > 0) {
     const message = `缺少以下必要文件:\n${missingFiles.join('\n')}`;
     log(message, 'error');
-    errorHandler.showErrorDialog('应用启动失败', message, '请确保所有应用文件都已正确解压。');
+    dialog.showErrorBox('应用启动失败', message + '\n请确保所有应用文件都已正确解压。');
     return false;
   }
   
@@ -256,19 +232,19 @@ async function createWindow() {
         
         if (fs.existsSync(altPath)) {
           log(`在根目录找到页面，加载: ${altPath}`);
-          await errorHandler.safeLoadFile(mainWindow, altPath);
+          await mainWindow.loadFile(altPath);
         } else {
           throw new Error(`找不到界面文件: ${htmlPath} 或 ${altPath}`);
         }
       } else {
         log(`加载主页面: ${htmlPath}`);
-        await errorHandler.safeLoadFile(mainWindow, htmlPath);
+        await mainWindow.loadFile(htmlPath);
       }
       
       log('界面加载成功');
     } catch (err) {
       log(`加载界面失败: ${err.message}`, 'error');
-      errorHandler.showErrorDialog('应用启动失败', `加载界面文件失败: ${err.message}，请确保应用文件完整。`);
+      dialog.showErrorBox('应用启动失败', `加载界面文件失败: ${err.message}，请确保应用文件完整。`);
       app.quit();
     }
     
@@ -276,15 +252,146 @@ async function createWindow() {
     // mainWindow.webContents.openDevTools();
   } catch (err) {
     log(`创建窗口失败: ${err.message}`, 'error');
-    errorHandler.showErrorDialog('应用启动失败', `创建窗口失败: ${err.message}`);
+    dialog.showErrorBox('应用启动失败', `创建窗口失败: ${err.message}`);
     app.quit();
   }
+}
+
+// 数据迁移 - 确保所有委托都有ID
+function migrateCommissions() {
+  const commissions = store.get('commissions') || [];
+  let hasChanges = false;
+  
+  // 检查并修复每个委托
+  commissions.forEach((commission, index) => {
+    // 如果委托没有ID，为其添加一个
+    if (!commission.id) {
+      log(`找到缺少ID的委托: ${commission.title || '无标题'}`, 'info');
+      commissions[index].id = uuidv4();
+      hasChanges = true;
+    }
+    
+    // 如果没有创建时间，添加一个默认值
+    if (!commission.createdAt) {
+      commissions[index].createdAt = new Date().toISOString();
+      hasChanges = true;
+    }
+    
+    // 如果没有状态，添加默认状态
+    if (!commission.status) {
+      commissions[index].status = 'active';
+      hasChanges = true;
+    }
+    
+    // 如果没有到期时间，添加默认30天有效期
+    if (!commission.expiryDate) {
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 30);
+      commissions[index].expiryDate = expiryDate.toISOString();
+      
+      const deletionDate = new Date(expiryDate);
+      deletionDate.setHours(deletionDate.getHours() + 24);
+      commissions[index].deletionDate = deletionDate.toISOString();
+      
+      hasChanges = true;
+    }
+    
+    // 如果没有设备ID，添加当前设备ID
+    if (!commission.deviceId) {
+      commissions[index].deviceId = getDeviceId();
+      hasChanges = true;
+    }
+  });
+  
+  // 如果有修改，保存数据
+  if (hasChanges) {
+    log(`已修复 ${commissions.length} 个委托的数据`, 'info');
+    store.set('commissions', commissions);
+  }
+}
+
+// 数据迁移 - 确保所有消息都有正确的结构
+function migrateMessages() {
+  const messages = store.get('messages') || {};
+  const deviceId = getDeviceId();
+  let totalFixed = 0;
+  let hasChanges = false;
+  
+  // 遍历所有委托的消息
+  Object.keys(messages).forEach(commissionId => {
+    if (Array.isArray(messages[commissionId])) {
+      // 检查并修复每条消息
+      messages[commissionId].forEach((msg, index) => {
+        let messageFixed = false;
+        
+        // 如果消息是字符串，转换为对象结构
+        if (typeof msg === 'string') {
+          messages[commissionId][index] = {
+            id: uuidv4(),
+            content: msg,
+            deviceId: deviceId, // 默认设为当前设备
+            timestamp: new Date().toISOString()
+          };
+          messageFixed = true;
+        } else if (typeof msg === 'object') {
+          // 如果消息是对象但缺少某些字段
+          if (!msg.id) {
+            messages[commissionId][index].id = uuidv4();
+            messageFixed = true;
+          }
+          
+          // 如果没有设备ID，添加当前设备ID
+          // 这会默认将所有未知设备的消息标记为当前设备发送的
+          if (!msg.deviceId) {
+            messages[commissionId][index].deviceId = deviceId;
+            messageFixed = true;
+          }
+          
+          // 如果没有时间戳，添加当前时间
+          if (!msg.timestamp) {
+            messages[commissionId][index].timestamp = new Date().toISOString();
+            messageFixed = true;
+          }
+          
+          // 如果没有内容字段但有message字段（旧结构），进行转换
+          if (!msg.content && msg.message) {
+            messages[commissionId][index].content = msg.message;
+            delete messages[commissionId][index].message;
+            messageFixed = true;
+          }
+          
+          // 确保有内容字段
+          if (!msg.content) {
+            messages[commissionId][index].content = '(旧消息)';
+            messageFixed = true;
+          }
+        }
+        
+        if (messageFixed) {
+          totalFixed++;
+          hasChanges = true;
+        }
+      });
+    }
+  });
+  
+  // 如果有修改，保存数据
+  if (hasChanges) {
+    log(`已修复 ${totalFixed} 条消息数据`, 'info');
+    store.set('messages', messages);
+  }
+  
+  return totalFixed;
 }
 
 // 当 Electron 完成初始化并准备创建浏览器窗口时调用此方法
 app.whenReady().then(async () => {
   log('应用就绪，准备创建窗口');
   try {
+    // 执行数据迁移
+    migrateCommissions();
+    migrateMessages(); // 添加消息数据迁移
+    
     await createWindow();
     
     app.on('activate', async function () {
@@ -296,7 +403,7 @@ app.whenReady().then(async () => {
     });
   } catch (err) {
     log(`应用初始化失败: ${err.message}`, 'error');
-    errorHandler.showErrorDialog('应用初始化失败', `启动应用时发生错误: ${err.message}，请尝试重新启动应用。`);
+    dialog.showErrorBox('应用初始化失败', `启动应用时发生错误: ${err.message}，请尝试重新启动应用。`);
     app.quit();
   }
 });
@@ -315,7 +422,7 @@ process.on('uncaughtException', (err) => {
   log(`未捕获的异常: ${err.message}`, 'error');
   log(err.stack, 'error');
   if (mainWindow) {
-    errorHandler.showErrorDialog('应用发生错误', `应用运行过程中发生未知错误: ${err.message}，请尝试重新启动应用。`);
+    dialog.showErrorBox('应用发生错误', `应用运行过程中发生未知错误: ${err.message}，请尝试重新启动应用。`);
   }
 });
 
@@ -331,9 +438,41 @@ ipcMain.handle('get-commissions', () => {
 
 ipcMain.handle('create-commission', (event, commission) => {
   const commissions = store.get('commissions') || [];
-  commissions.push(commission);
+  const deviceId = getDeviceId();
+  
+  // 创建新委托，添加ID和时间信息
+  const newCommission = {
+    ...commission,
+    id: uuidv4(),
+    deviceId, // 添加设备ID
+    createdAt: new Date().toISOString(),
+    status: 'active'
+  };
+  
+  // 计算委托有效期 - 默认30天
+  const validDays = commission.validDays || 30;
+  
+  // 计算到期时间
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + validDays);
+  
+  // 计算从过期到彻底删除的时间 - 过期后24小时
+  const deletionDate = new Date(expiryDate);
+  deletionDate.setHours(deletionDate.getHours() + 24);
+  
+  // 添加到期和删除时间
+  newCommission.expiryDate = expiryDate.toISOString();
+  newCommission.deletionDate = deletionDate.toISOString();
+  
+  commissions.push(newCommission);
   store.set('commissions', commissions);
-  return commission;
+  
+  // 初始化此委托的消息列表
+  const messages = store.get('messages') || {};
+  messages[newCommission.id] = [];
+  store.set('messages', messages);
+  
+  return newCommission;
 });
 
 ipcMain.handle('get-commission', (event, id) => {
@@ -342,8 +481,10 @@ ipcMain.handle('get-commission', (event, id) => {
 });
 
 ipcMain.handle('get-my-commissions', () => {
+  const deviceId = getDeviceId();
   const commissions = store.get('commissions') || [];
-  return commissions.filter(comm => comm.isOwner);
+  // 只返回当前设备创建的委托
+  return commissions.filter(commission => commission.deviceId === deviceId);
 });
 
 ipcMain.handle('search-commission', (event, id) => {
@@ -407,7 +548,7 @@ ipcMain.handle('admin-delete-message', (event, { commissionId, messageIndex }) =
 // 定义 IPC 处理程序 - 内容审核
 ipcMain.handle('check-content', (event, content) => {
   // 简化版内容审核
-  return { pass: true, reason: '' };
+  return { passed: true, message: '内容审核通过' };
 });
 
 // 定义 IPC 处理程序 - 消息相关
@@ -417,14 +558,132 @@ ipcMain.handle('get-messages', (event, commissionId) => {
 });
 
 ipcMain.handle('add-message', (event, { commissionId, message }) => {
-  const messages = store.get('messages') || {};
-  if (!messages[commissionId]) {
-    messages[commissionId] = [];
-  }
+  const deviceId = getDeviceId();
+  log(`添加消息，设备ID: ${deviceId}，委托ID: ${commissionId}，消息内容: ${message}`);
   
-  messages[commissionId].push(message);
-  store.set('messages', messages);
-  return message;
+  try {
+    // 获取所有消息
+    const messages = store.get('messages');
+    
+    // 添加新消息
+    const newMessage = {
+      id: uuidv4(),
+      content: message,
+      deviceId,
+      timestamp: new Date().toISOString()
+    };
+    
+    if (!messages[commissionId]) {
+      messages[commissionId] = [];
+    }
+    
+    messages[commissionId].push(newMessage);
+    store.set('messages', messages);
+    
+    log(`消息添加成功，委托ID: ${commissionId}`);
+    return newMessage;
+  } catch (error) {
+    log(`添加消息失败: ${error.message}`, 'error');
+    return { error: 'message-failed', message: '发送消息失败，请稍后再试' };
+  }
+});
+
+// 删除消息
+ipcMain.handle('delete-message', (event, { commissionId, messageId }) => {
+  try {
+    const deviceId = getDeviceId();
+    log(`尝试删除消息，设备ID: ${deviceId}，委托ID: ${commissionId}，消息ID: ${messageId || '未提供ID'}`);
+    
+    // 获取所有消息
+    const messages = store.get('messages');
+    
+    if (!messages) {
+      log('消息存储为空', 'error');
+      return { error: 'messages-empty', message: '消息存储为空' };
+    }
+    
+    // 检查委托是否存在
+    if (!messages[commissionId] || !Array.isArray(messages[commissionId])) {
+      log(`未找到委托消息列表，委托ID: ${commissionId}`, 'error');
+      return { error: 'commission-not-found', message: '未找到相关委托的消息' };
+    }
+    
+    log(`委托 ${commissionId} 的消息列表:`, 'info');
+    messages[commissionId].forEach((msg, idx) => {
+      log(`[${idx}] ID: ${msg.id || '无ID'}, 设备: ${msg.deviceId || '未知设备'}`);
+    });
+    
+    // 查找要删除的消息
+    let messageIndex = -1;
+    
+    if (messageId) {
+      // 通过ID查找
+      messageIndex = messages[commissionId].findIndex(msg => msg.id === messageId);
+      log(`通过ID查找消息，ID: ${messageId}, 索引: ${messageIndex}`, 'info');
+    } else {
+      // 如果没有提供ID，尝试找到由当前设备发送的最新消息
+      log('未提供消息ID，尝试查找当前设备发送的最新消息', 'warning');
+      for (let i = messages[commissionId].length - 1; i >= 0; i--) {
+        if (messages[commissionId][i].deviceId === deviceId) {
+          messageIndex = i;
+          log(`找到当前设备的最新消息，索引: ${messageIndex}`, 'info');
+          break;
+        }
+      }
+    }
+    
+    // 检查消息是否存在
+    if (messageIndex === -1) {
+      log(`未找到指定消息，委托: ${commissionId}，消息ID: ${messageId || '未提供'}`, 'error');
+      return { error: 'message-not-found', message: '未找到指定消息' };
+    }
+    
+    // 获取消息对象
+    const targetMessage = messages[commissionId][messageIndex];
+    log(`找到目标消息: ${JSON.stringify(targetMessage)}`, 'info');
+    
+    // 确认是当前用户发送的消息
+    if (targetMessage.deviceId && targetMessage.deviceId !== deviceId) {
+      log(`设备ID不匹配，消息设备ID: ${targetMessage.deviceId}，当前设备ID: ${deviceId}`, 'warning');
+      // 特殊处理：如果没有deviceId或标记为迁移，则允许删除
+      if (!targetMessage.deviceId || targetMessage.migrated) {
+        log('特殊情况：消息没有设备ID或被标记为迁移，允许删除', 'info');
+      } else {
+        return { error: 'unauthorized', message: '您只能删除自己发送的消息' };
+      }
+    }
+    
+    // 删除消息
+    const deletedMessage = messages[commissionId].splice(messageIndex, 1)[0];
+    store.set('messages', messages);
+    
+    log(`成功删除消息，委托ID: ${commissionId}，消息索引: ${messageIndex}`, 'info');
+    return { 
+      success: true, 
+      message: '消息已删除',
+      deletedMessage: {
+        id: deletedMessage.id,
+        deviceId: deletedMessage.deviceId
+      }
+    };
+  } catch (error) {
+    log(`删除消息失败: ${error.message}`, 'error');
+    log(error.stack, 'error');
+    return { error: 'delete-failed', message: '删除消息失败，请稍后重试' };
+  }
+});
+
+// 获取设备ID
+ipcMain.handle('get-device-id', () => {
+  try {
+    const deviceId = getDeviceId();
+    log(`返回设备ID: ${deviceId}`);
+    return deviceId;
+  } catch (error) {
+    log(`获取设备ID时出错: ${error.message}`, 'error');
+    log(error.stack, 'error');
+    return null;
+  }
 });
 
 // 定义 IPC 处理程序 - 设置相关
@@ -479,7 +738,7 @@ ipcMain.handle('get-app-version', () => {
 });
 
 ipcMain.handle('show-error-dialog', (event, { title, message }) => {
-  errorHandler.showErrorDialog(title || '错误', message || '发生未知错误');
+  dialog.showErrorBox(title || '错误', message || '发生未知错误');
   return true;
 });
 
@@ -489,6 +748,401 @@ function notifyThemeChange(isDark) {
     mainWindow.webContents.send('theme-changed', isDark);
   }
 }
+
+// 获取设备唯一标识
+function getDeviceId() {
+  // 首先尝试从存储中读取设备ID
+  if (store.has('deviceId')) {
+    return store.get('deviceId');
+  }
+  
+  // 如果不存在，生成新的设备ID
+  const os = require('os');
+  const crypto = require('crypto');
+  
+  const hostname = os.hostname();
+  const cpus = os.cpus();
+  const networkInterfaces = os.networkInterfaces();
+  
+  // 组合设备信息
+  const deviceInfo = JSON.stringify({
+    cpus: cpus.length > 0 ? cpus[0].model : '',
+    hostname,
+    mac: Object.values(networkInterfaces)
+      .flat()
+      .filter(i => !i.internal && i.mac !== '00:00:00:00:00:00')
+      .map(i => i.mac)
+      .join('-')
+  });
+  
+  // 创建哈希
+  const deviceId = crypto.createHash('sha256').update(deviceInfo).digest('hex');
+  
+  // 保存设备ID到存储中
+  store.set('deviceId', deviceId);
+  log('已生成并保存新的设备ID:', deviceId);
+  
+  return deviceId;
+}
+
+// 检查委托限制
+ipcMain.handle('check-commission-limit', (event) => {
+  try {
+    const deviceId = getDeviceId();
+    log(`检查委托限制，设备ID: ${deviceId}`);
+    
+    // 获取所有委托
+    const commissions = store.get('commissions') || [];
+    
+    // 计算该设备创建的委托数量
+    const userCommissions = commissions.filter(comm => comm.deviceId === deviceId);
+    const totalCount = userCommissions.length;
+    
+    // 检查今日发布数量
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const todayCommissions = userCommissions.filter(comm => {
+      const createDate = new Date(comm.createTime).toISOString().split('T')[0];
+      return createDate === today;
+    });
+    const dailyCount = todayCommissions.length;
+    
+    // 设置限制阈值
+    const COMMISSION_DAILY_LIMIT = 2; // 每日委托限制
+    const COMMISSION_TOTAL_LIMIT = 10; // 总委托限制
+    
+    // 检查是否达到限制
+    const dailyLimitReached = dailyCount >= COMMISSION_DAILY_LIMIT;
+    const totalLimitReached = totalCount >= COMMISSION_TOTAL_LIMIT;
+    
+    return {
+      dailyCount,
+      totalCount,
+      dailyLimitReached,
+      totalLimitReached,
+      dailyLimit: COMMISSION_DAILY_LIMIT,
+      totalLimit: COMMISSION_TOTAL_LIMIT
+    };
+  } catch (error) {
+    log(`检查委托限制失败: ${error.message}`, 'error');
+    log(error.stack, 'error');
+    return {
+      dailyCount: 0,
+      totalCount: 0,
+      dailyLimitReached: false,
+      totalLimitReached: false,
+      dailyLimit: 2,
+      totalLimit: 10
+    };
+  }
+});
+
+// 获取委托的赞踩情况
+ipcMain.handle('get-commission-ratings', (commissionId) => {
+  try {
+    // 获取赞踩记录
+    const ratings = store.get('ratings') || {};
+    const commissionRatings = ratings[commissionId] || { likes: 0, dislikes: 0 };
+    
+    // 获取当前用户的赞踩状态
+    const deviceId = getDeviceId();
+    const userRatings = store.get('userRatingLimits') || {};
+    const userRating = userRatings[deviceId]?.commissions[commissionId]?.type || null;
+    
+    return {
+      success: true,
+      likes: commissionRatings.likes,
+      dislikes: commissionRatings.dislikes,
+      userRating
+    };
+  } catch (error) {
+    log(`获取委托赞踩情况失败: ${error.message}`, 'error');
+    return {
+      success: false,
+      error: 'rating-fetch-failed',
+      message: '获取赞踩信息失败'
+    };
+  }
+});
+
+// 对委托进行赞或踩
+ipcMain.handle('rate-commission', (event, { commissionId, ratingType }) => {
+  try {
+    const deviceId = getDeviceId();
+    
+    // 获取赞踩记录
+    const ratings = store.get('ratings') || {};
+    const commissionRatings = ratings[commissionId] || { likes: 0, dislikes: 0 };
+    
+    // 获取用户赞踩限制记录
+    const userRatings = store.get('userRatingLimits') || {};
+    
+    // 获取或初始化当前用户的今日记录
+    const today = new Date().toISOString().split('T')[0];
+    if (!userRatings[deviceId]) {
+      userRatings[deviceId] = {
+        date: today,
+        count: 0,
+        commissions: {}
+      };
+    }
+    
+    // 如果是新的一天，重置计数
+    if (userRatings[deviceId].date !== today) {
+      userRatings[deviceId] = {
+        date: today,
+        count: 0,
+        commissions: {}
+      };
+    }
+    
+    // 检查用户每日赞踩次数是否超限
+    if (userRatings[deviceId].count >= 10) {
+      return { 
+        error: 'limit-exceeded', 
+        message: '您今天的赞踩次数已达上限，请明天再试' 
+      };
+    }
+    
+    // 获取用户在该委托上的当前赞踩状态
+    const currentRating = userRatings[deviceId].commissions[commissionId]?.type || null;
+    
+    // 如果用户之前没有对该委托进行过赞踩，或者正在更改赞踩类型
+    if (currentRating !== ratingType) {
+      // 先处理移除之前的赞踩（如果有）
+      if (currentRating === 'like') {
+        commissionRatings.likes = Math.max(0, commissionRatings.likes - 1);
+      } else if (currentRating === 'dislike') {
+        commissionRatings.dislikes = Math.max(0, commissionRatings.dislikes - 1);
+      }
+      
+      // 添加新的赞踩
+      if (ratingType === 'like') {
+        commissionRatings.likes += 1;
+      } else if (ratingType === 'dislike') {
+        commissionRatings.dislikes += 1;
+      }
+      
+      // 如果是新增赞踩（而不是取消），增加计数
+      if (ratingType !== null && currentRating === null) {
+        userRatings[deviceId].count += 1;
+      }
+      
+      // 更新用户在该委托上的赞踩状态
+      userRatings[deviceId].commissions[commissionId] = {
+        type: ratingType,
+        timestamp: new Date().toISOString()
+      };
+      
+      // 保存更新后的数据
+      ratings[commissionId] = commissionRatings;
+      store.set('ratings', ratings);
+      store.set('userRatingLimits', userRatings);
+      
+      return { 
+        success: true, 
+        likes: commissionRatings.likes,
+        dislikes: commissionRatings.dislikes,
+        userRating: ratingType,
+        remainingCount: 10 - userRatings[deviceId].count
+      };
+    } else {
+      // 用户点击了相同类型的赞踩，视为取消
+      if (ratingType === 'like') {
+        commissionRatings.likes = Math.max(0, commissionRatings.likes - 1);
+      } else if (ratingType === 'dislike') {
+        commissionRatings.dislikes = Math.max(0, commissionRatings.dislikes - 1);
+      }
+      
+      // 更新用户在该委托上的赞踩状态
+      userRatings[deviceId].commissions[commissionId] = {
+        type: null,
+        timestamp: new Date().toISOString()
+      };
+      
+      // 保存更新后的数据
+      ratings[commissionId] = commissionRatings;
+      store.set('ratings', ratings);
+      store.set('userRatingLimits', userRatings);
+      
+      return { 
+        success: true, 
+        likes: commissionRatings.likes,
+        dislikes: commissionRatings.dislikes,
+        userRating: null,
+        remainingCount: 10 - userRatings[deviceId].count
+      };
+    }
+  } catch (error) {
+    log(`处理赞踩操作失败: ${error.message}`, 'error');
+    return { 
+      success: false, 
+      error: 'processing-failed', 
+      message: '处理赞踩失败，请稍后再试' 
+    };
+  }
+});
+
+// 管理员删除委托
+ipcMain.handle('admin-delete-commission', async (event, id) => {
+  const deviceId = getDeviceId();
+  log(`尝试管理员删除委托，设备ID: ${deviceId}，委托ID: ${id}`);
+  
+  try {
+    // 获取当前委托列表
+    const commissions = store.get('commissions');
+    
+    // 过滤掉要删除的委托
+    const updatedCommissions = commissions.filter(commission => commission.id !== id);
+    
+    // 保存更新后的委托列表
+    store.set('commissions', updatedCommissions);
+    
+    // 删除相关联的消息
+    const messages = store.get('messages');
+    if (messages[id]) {
+      delete messages[id];
+      store.set('messages', messages);
+    }
+    
+    log(`管理员成功删除委托，委托ID: ${id}`);
+    return { success: true };
+  } catch (error) {
+    log(`管理员删除委托失败: ${error.message}`, 'error');
+    return { success: false, error: error.message };
+  }
+});
+
+// 管理员删除消息
+ipcMain.handle('admin-delete-message', async (event, { commissionId, messageIndex }) => {
+  const deviceId = getDeviceId();
+  log(`尝试管理员删除消息，设备ID: ${deviceId}，委托ID: ${commissionId}，消息索引: ${messageIndex}`);
+  
+  try {
+    // 获取所有消息
+    const messages = store.get('messages');
+    
+    // 检查委托是否存在
+    if (!messages[commissionId] || !Array.isArray(messages[commissionId])) {
+      return { error: 'commission-not-found', message: '未找到相关委托的消息' };
+    }
+    
+    // 检查索引是否有效
+    if (messageIndex < 0 || messageIndex >= messages[commissionId].length) {
+      return { error: 'invalid-index', message: '无效的消息索引' };
+    }
+    
+    // 删除消息
+    messages[commissionId].splice(messageIndex, 1);
+    store.set('messages', messages);
+    
+    log(`管理员成功删除消息，委托ID: ${commissionId}，消息索引: ${messageIndex}`);
+    return { success: true };
+  } catch (error) {
+    log(`管理员删除消息失败: ${error.message}`, 'error');
+    return { error: 'delete-failed', message: '删除消息失败' };
+  }
+});
+
+// 检查内容安全
+ipcMain.handle('check-content', async (event, content) => {
+  try {
+    // 简单的内容检查
+    const hasMaliciousCode = containsMaliciousCode(content);
+    if (hasMaliciousCode) {
+      return { 
+        passed: false, 
+        reason: '检测到潜在危险内容' 
+      };
+    }
+    
+    return { passed: true };
+  } catch (error) {
+    log(`内容检查失败: ${error.message}`, 'error');
+    return { error: 'check-failed', message: '内容检查失败' };
+  }
+});
+
+// 辅助函数：检查内容是否包含恶意代码
+function containsMaliciousCode(content) {
+  if (!content || typeof content !== 'string') return false;
+  
+  // 检查常见的恶意代码模式
+  const suspiciousPatterns = [
+    /<script>/i,
+    /javascript:/i,
+    /onload=/i,
+    /onerror=/i,
+    /eval\(/i,
+    /document\.cookie/i,
+    /localStorage/i,
+    /sessionStorage/i,
+    /fetch\(/i,
+    /xhr\./i
+  ];
+  
+  return suspiciousPatterns.some(pattern => pattern.test(content));
+}
+
+// 检查评论限制
+ipcMain.handle('check-comment-limit', (event) => {
+  try {
+    const deviceId = getDeviceId();
+    log(`检查评论限制，设备ID: ${deviceId}`);
+    
+    // 获取所有消息
+    const messages = store.get('messages');
+    const COMMENT_DAILY_LIMIT = 10;
+    const COMMENT_TOTAL_LIMIT = 50;
+    
+    if (!messages) {
+      return {
+        dailyCount: 0,
+        totalCount: 0,
+        dailyLimitReached: false,
+        totalLimitReached: false
+      };
+    }
+    
+    // 获取所有由当前设备发送的消息
+    let allUserMessages = [];
+    Object.values(messages).forEach(commMessages => {
+      if (Array.isArray(commMessages)) {
+        const userMessages = commMessages.filter(msg => msg.deviceId === deviceId);
+        allUserMessages = allUserMessages.concat(userMessages);
+      }
+    });
+    
+    // 计算总数
+    const totalCount = allUserMessages.length;
+    const totalLimitReached = totalCount >= COMMENT_TOTAL_LIMIT;
+    
+    // 计算今日数量
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const todayMessages = allUserMessages.filter(msg => {
+      const msgDate = new Date(msg.timestamp).toISOString().split('T')[0];
+      return msgDate === today;
+    });
+    const dailyCount = todayMessages.length;
+    const dailyLimitReached = dailyCount >= COMMENT_DAILY_LIMIT;
+    
+    log(`评论限制状态 - 今日: ${dailyCount}/${COMMENT_DAILY_LIMIT}, 总计: ${totalCount}/${COMMENT_TOTAL_LIMIT}`);
+    
+    return {
+      dailyCount,
+      totalCount,
+      dailyLimitReached,
+      totalLimitReached
+    };
+  } catch (error) {
+    log(`检查评论限制失败: ${error.message}`, 'error');
+    return {
+      dailyCount: 0,
+      totalCount: 0,
+      dailyLimitReached: false,
+      totalLimitReached: false
+    };
+  }
+});
 
 // 导出 store 供其他模块使用
 module.exports = { store }; 

@@ -300,6 +300,50 @@
           </div>
         </div>
         
+        <!-- 使用限制信息面板 -->
+        <div class="settings-panel limits-panel">
+          <h2 data-original="使用限制信息">使用限制信息</h2>
+          <div id="limits-info" class="limits-info">
+            <div class="limit-item">
+              <div class="limit-label" data-original="今日委托发布">今日委托发布</div>
+              <div class="limit-value">
+                <span id="daily-commission-count">-</span> / <span id="daily-commission-limit">2</span>
+              </div>
+            </div>
+            <div class="limit-item">
+              <div class="limit-label" data-original="总委托数量">总委托数量</div>
+              <div class="limit-value">
+                <span id="total-commission-count">-</span> / <span id="total-commission-limit">10</span>
+              </div>
+            </div>
+            <div class="limit-progress-container">
+              <div id="commission-limit-progress" class="limit-progress"></div>
+            </div>
+            <div class="limit-tip" data-original="每天最多发布2个委托，同时最多拥有10个委托">每天最多发布2个委托，同时最多拥有10个委托</div>
+            <div class="limit-tip" data-original="超过限制将无法继续发布委托">超过限制将无法继续发布委托</div>
+            
+            <div class="limit-divider"></div>
+            
+            <div class="limit-item">
+              <div class="limit-label" data-original="今日评论数量">今日评论数量</div>
+              <div class="limit-value">
+                <span id="daily-comment-count">-</span> / <span id="daily-comment-limit">10</span>
+              </div>
+            </div>
+            <div class="limit-item">
+              <div class="limit-label" data-original="总评论数量">总评论数量</div>
+              <div class="limit-value">
+                <span id="total-comment-count">-</span> / <span id="total-comment-limit">50</span>
+              </div>
+            </div>
+            <div class="limit-progress-container">
+              <div id="comment-limit-progress" class="limit-progress"></div>
+            </div>
+            <div class="limit-tip" data-original="每天最多发表10条评论，总评论上限为50条">每天最多发表10条评论，总评论上限为50条</div>
+            <div class="limit-tip api-required-tip" data-original="需要设置自定义API后才能发表评论">需要设置自定义API后才能发表评论</div>
+          </div>
+        </div>
+        
         <div class="my-content">
           <h2>我的委托</h2>
           <div id="my-commissions" class="grid-list"></div>
@@ -358,10 +402,10 @@
             </div>
           </div>
           
-          <!-- 发布城市 -->
+          <!-- 城市选择 -->
           <div class="form-group">
-            <label for="city">发布城市</label>
-            <div class="city-selection">
+            <label for="city">所在城市</label>
+            <div class="city-select-container">
               <select id="city">
                 <option value="全国">全国</option>
                 <option value="北京">北京</option>
@@ -376,18 +420,15 @@
                 <option value="西安">西安</option>
                 <option value="南京">南京</option>
                 <option value="长沙">长沙</option>
-                <option value="苏州">苏州</option>
                 <option value="郑州">郑州</option>
-                <option value="沈阳">沈阳</option>
                 <option value="青岛">青岛</option>
+                <option value="沈阳">沈阳</option>
                 <option value="大连">大连</option>
-                <option value="宁波">宁波</option>
-                <option value="厦门">厦门</option>
-                <option value="福州">福州</option>
                 <option value="济南">济南</option>
-                <option value="合肥">合肥</option>
                 <option value="哈尔滨">哈尔滨</option>
                 <option value="长春">长春</option>
+                <option value="福州">福州</option>
+                <option value="厦门">厦门</option>
                 <option value="昆明">昆明</option>
                 <option value="贵阳">贵阳</option>
                 <option value="南宁">南宁</option>
@@ -404,6 +445,15 @@
                 <option value="东莞">东莞</option>
               </select>
               <div class="city-tip">选择"全国"表示不限地区</div>
+            </div>
+          </div>
+          
+          <!-- 截止日期 -->
+          <div class="form-group">
+            <label for="expiryDate">委托截止日期</label>
+            <div class="expiry-date-container">
+              <input type="date" id="expiryDate" required>
+              <div class="expiry-tip">委托有效期最长为一年，过期后将自动删除</div>
             </div>
           </div>
           
