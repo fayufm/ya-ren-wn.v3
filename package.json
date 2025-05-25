@@ -1,8 +1,9 @@
 {
   "name": "yaren-app-portable",
-  "version": "1.0.1",
+  "productName": "牙人",
+  "version": "1.0.3",
   "description": "牙人委托发布与查看应用（便携版）",
-  "main": "main-compat-fixed.js",
+  "main": "main-compat.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
@@ -21,6 +22,7 @@
     "rimraf": "^5.0.5"
   },
   "dependencies": {
-    "axios": "^1.9.0"
+    "axios": "^1.9.0",
+    "uuid": "^11.1.0"
   }
-} 
+}
