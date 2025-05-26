@@ -1,0 +1,39 @@
+directories:
+  output: portable-dist-inline
+  buildResources: build
+appId: com.fayufm.yaren
+productName: 牙人
+artifactName: 牙人便携版-内联UUID-${version}.${ext}
+files:
+  - filter:
+      - '**/*'
+      - '!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,__pycache__,thumbs.db,.gitignore,.gitattributes}'
+      - '!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}'
+      - '!**/dist'
+      - '!**/portable-dist*'
+      - '!build'
+      - '!installer.nsh'
+portable:
+  splashImage: ./yaren-1.png
+win:
+  target:
+    - portable
+  icon: ./yaren.ico
+  requestedExecutionLevel: asInvoker
+extraResources:
+  - from: ./app-data
+    to: app-data
+    filter:
+      - '**/*'
+extraFiles:
+  - from: uuid-inline.js
+    to: uuid-inline.js
+  - from: data-template
+    to: data
+    filter:
+      - '**/*'
+asar: true
+compression: normal
+removePackageScripts: true
+publish: null
+electronVersion: 36.0.0

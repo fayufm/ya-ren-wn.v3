@@ -1,7 +1,36 @@
 const { app, BrowserWindow, ipcMain, Menu, session } = require('electron');
 const path = require('path');
 const { default: Store } = require('electron-store');
-const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
+// 使用内联版本的uuid模块，尝试多种路径引用方式
+let uuidModule;
+try {
+  // 尝试相对路径
+  uuidModule = require('./uuid-inline');
+} catch (err) {
+  try {
+    // 尝试使用绝对路径
+    uuidModule = require(path.join(__dirname, 'uuid-inline'));
+  } catch (err2) {
+    try {
+      // 尝试不带扩展名的路径
+      uuidModule = require(path.join(__dirname, 'uuid-inline.js'));
+    } catch (err3) {
+      console.error('无法加载uuid-inline模块，尝试内联实现');
+      // 提供内联实现作为后备
+      uuidModule = {
+        v4: function() {
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          });
+        }
+      };
+    }
+  }
+}
+const { v4: uuidv4 } = uuidModule;
 const axios = require('axios');
 const crypto = require('crypto');
 const os = require('os');
@@ -48,9 +77,32 @@ function getDeviceId() {
   return crypto.createHash('sha256').update(deviceInfo).digest('hex');
 }
 
+// 确定数据存储路径 - 便携版修改
+const getDataStorePath = () => {
+  try {
+    // 尝试在应用程序所在目录的同级创建data文件夹
+    const portableDataPath = path.join(path.dirname(app.getPath('exe')), 'data');
+    if (!fs.existsSync(portableDataPath)) {
+      fs.mkdirSync(portableDataPath, { recursive: true });
+    }
+    console.log(`使用便携版数据路径: ${portableDataPath}`);
+    return portableDataPath;
+  } catch (err) {
+    console.error(`创建便携数据目录失败: ${err.message}`);
+    // 备用方案：使用临时目录
+    const tempPath = path.join(app.getPath('temp'), 'yaren-app-data');
+    if (!fs.existsSync(tempPath)) {
+      fs.mkdirSync(tempPath, { recursive: true });
+    }
+    console.log(`使用临时数据路径: ${tempPath}`);
+    return tempPath;
+  }
+};
+
 // 初始化存储
 const store = new Store({
   encryptionKey: 'your-encryption-key-here', // 添加加密密钥
+  cwd: getDataStorePath() // 设置数据存储路径为便携版路径
 });
 
 // 如果没有初始化数据，创建默认数据
