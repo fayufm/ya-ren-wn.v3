@@ -1,5 +1,6 @@
 /**
  * 牙人应用便携版打包配置（优化版）
+ * 当前版本：1.1.0
  */
 module.exports = {
   appId: "com.fayufm.yaren",

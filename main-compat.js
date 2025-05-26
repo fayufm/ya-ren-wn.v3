@@ -4,6 +4,7 @@ require = require("module").createRequire(process.cwd() + "/");
 const { app, BrowserWindow, ipcMain, Menu, session, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
 // 使用内联版本的uuid模块，尝试多种路径引用方式
 let uuidModule;
 try {
@@ -424,7 +425,107 @@ function migrateMessages() {
   return totalFixed;
 }
 
-// 当 Electron 完成初始化并准备创建浏览器窗口时调用此方法
+// 导出 store 供其他模块使用
+module.exports = { store };
+
+// 配置自动更新
+function setupAutoUpdater() {
+  // 日志配置
+  autoUpdater.logger = console;
+  log('自动更新已配置，当前版本：1.1.0');
+
+  // 设置更新服务器URL (可选，如果在package.json中已配置)
+  // autoUpdater.setFeedURL('http://8.155.16.247:3000/updates');
+  
+  // 自动更新事件处理
+  autoUpdater.on('checking-for-update', () => {
+    log('正在检查更新...');
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', { status: 'checking' });
+    }
+  });
+  
+  autoUpdater.on('update-available', (info) => {
+    log(`发现新版本: ${info.version}`);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', { 
+        status: 'available',
+        version: info.version 
+      });
+    }
+  });
+  
+  autoUpdater.on('update-not-available', () => {
+    log('当前已是最新版本');
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', { status: 'not-available' });
+    }
+  });
+  
+  autoUpdater.on('download-progress', (progressObj) => {
+    const message = `下载速度: ${progressObj.bytesPerSecond} - 已下载 ${progressObj.percent}% (${progressObj.transferred}/${progressObj.total})`;
+    log(message);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', { 
+        status: 'downloading',
+        progress: progressObj
+      });
+    }
+  });
+  
+  autoUpdater.on('update-downloaded', (info) => {
+    log(`更新下载完成: ${info.version}`);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', { 
+        status: 'downloaded',
+        version: info.version
+      });
+      
+      // 询问用户是否立即安装更新
+      const dialogOptions = {
+        type: 'info',
+        buttons: ['立即重启', '稍后更新'],
+        title: '应用更新',
+        message: `牙人新版本 ${info.version} 已下载完成，重启应用以应用更新。`,
+        detail: '点击"立即重启"应用新版本'
+      };
+      
+      dialog.showMessageBox(dialogOptions).then((returnValue) => {
+        if (returnValue.response === 0) {  // 用户选择了"立即重启"
+          autoUpdater.quitAndInstall();
+        }
+      });
+    }
+  });
+  
+  autoUpdater.on('error', (err) => {
+    log(`更新出错: ${err.message}`, 'error');
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', { 
+        status: 'error',
+        error: err.message
+      });
+    }
+  });
+
+  // 定期检查更新
+  const checkForUpdates = () => {
+    try {
+      log('开始检查更新');
+      autoUpdater.checkForUpdates();
+    } catch (error) {
+      log(`检查更新失败: ${error.message}`, 'error');
+    }
+  };
+
+  // 应用启动时检查一次更新
+  setTimeout(checkForUpdates, 10000); // 启动10秒后检查
+  
+  // 每小时检查一次更新
+  setInterval(checkForUpdates, 60 * 60 * 1000);
+}
+
+// 在应用准备好时设置自动更新
 app.whenReady().then(async () => {
   log('应用就绪，准备创建窗口');
   try {
@@ -433,6 +534,9 @@ app.whenReady().then(async () => {
     migrateMessages(); // 添加消息数据迁移
     
     await createWindow();
+    
+    // 设置自动更新
+    setupAutoUpdater();
     
     app.on('activate', async function () {
       // 在 macOS 上，通常在应用程序中重新创建一个窗口
@@ -472,8 +576,22 @@ process.on('unhandledRejection', (reason) => {
 });
 
 // 定义 IPC 处理程序 - 委托相关
-ipcMain.handle('get-commissions', () => {
-  return store.get('commissions') || [];
+ipcMain.handle('get-commissions', async () => {
+  try {
+    const commissions = store.get('commissions') || [];
+    // 过滤掉已删除的委托
+    return {
+      success: true,
+      commissions: commissions.filter(commission => !commission.deleted)
+    };
+  } catch (error) {
+    log(`获取委托列表失败: ${error.message}`, 'error');
+    return {
+      success: false,
+      error: 'fetch-failed',
+      message: '获取委托列表失败'
+    };
+  }
 });
 
 ipcMain.handle('create-commission', (event, commission) => {
@@ -540,11 +658,6 @@ ipcMain.handle('delete-commission', (event, id) => {
 });
 
 // 定义 IPC 处理程序 - 赞踩功能
-ipcMain.handle('get-commission-ratings', (event, commissionId) => {
-  const ratings = store.get('ratings') || {};
-  return ratings[commissionId] || { likes: 0, dislikes: 0 };
-});
-
 ipcMain.handle('rate-commission', (event, { commissionId, ratingType }) => {
   const ratings = store.get('ratings') || {};
   if (!ratings[commissionId]) {
@@ -876,253 +989,6 @@ ipcMain.handle('check-commission-limit', (event) => {
   }
 });
 
-// 获取委托的赞踩情况
-ipcMain.handle('get-commission-ratings', (commissionId) => {
-  try {
-    // 获取赞踩记录
-    const ratings = store.get('ratings') || {};
-    const commissionRatings = ratings[commissionId] || { likes: 0, dislikes: 0 };
-    
-    // 获取当前用户的赞踩状态
-    const deviceId = getDeviceId();
-    const userRatings = store.get('userRatingLimits') || {};
-    const userRating = userRatings[deviceId]?.commissions[commissionId]?.type || null;
-    
-    return {
-      success: true,
-      likes: commissionRatings.likes,
-      dislikes: commissionRatings.dislikes,
-      userRating
-    };
-  } catch (error) {
-    log(`获取委托赞踩情况失败: ${error.message}`, 'error');
-    return {
-      success: false,
-      error: 'rating-fetch-failed',
-      message: '获取赞踩信息失败'
-    };
-  }
-});
-
-// 对委托进行赞或踩
-ipcMain.handle('rate-commission', (event, { commissionId, ratingType }) => {
-  try {
-    const deviceId = getDeviceId();
-    
-    // 获取赞踩记录
-    const ratings = store.get('ratings') || {};
-    const commissionRatings = ratings[commissionId] || { likes: 0, dislikes: 0 };
-    
-    // 获取用户赞踩限制记录
-    const userRatings = store.get('userRatingLimits') || {};
-    
-    // 获取或初始化当前用户的今日记录
-    const today = new Date().toISOString().split('T')[0];
-    if (!userRatings[deviceId]) {
-      userRatings[deviceId] = {
-        date: today,
-        count: 0,
-        commissions: {}
-      };
-    }
-    
-    // 如果是新的一天，重置计数
-    if (userRatings[deviceId].date !== today) {
-      userRatings[deviceId] = {
-        date: today,
-        count: 0,
-        commissions: {}
-      };
-    }
-    
-    // 检查用户每日赞踩次数是否超限
-    if (userRatings[deviceId].count >= 10) {
-      return { 
-        error: 'limit-exceeded', 
-        message: '您今天的赞踩次数已达上限，请明天再试' 
-      };
-    }
-    
-    // 获取用户在该委托上的当前赞踩状态
-    const currentRating = userRatings[deviceId].commissions[commissionId]?.type || null;
-    
-    // 如果用户之前没有对该委托进行过赞踩，或者正在更改赞踩类型
-    if (currentRating !== ratingType) {
-      // 先处理移除之前的赞踩（如果有）
-      if (currentRating === 'like') {
-        commissionRatings.likes = Math.max(0, commissionRatings.likes - 1);
-      } else if (currentRating === 'dislike') {
-        commissionRatings.dislikes = Math.max(0, commissionRatings.dislikes - 1);
-      }
-      
-      // 添加新的赞踩
-      if (ratingType === 'like') {
-        commissionRatings.likes += 1;
-      } else if (ratingType === 'dislike') {
-        commissionRatings.dislikes += 1;
-      }
-      
-      // 如果是新增赞踩（而不是取消），增加计数
-      if (ratingType !== null && currentRating === null) {
-        userRatings[deviceId].count += 1;
-      }
-      
-      // 更新用户在该委托上的赞踩状态
-      userRatings[deviceId].commissions[commissionId] = {
-        type: ratingType,
-        timestamp: new Date().toISOString()
-      };
-      
-      // 保存更新后的数据
-      ratings[commissionId] = commissionRatings;
-      store.set('ratings', ratings);
-      store.set('userRatingLimits', userRatings);
-      
-      return { 
-        success: true, 
-        likes: commissionRatings.likes,
-        dislikes: commissionRatings.dislikes,
-        userRating: ratingType,
-        remainingCount: 10 - userRatings[deviceId].count
-      };
-    } else {
-      // 用户点击了相同类型的赞踩，视为取消
-      if (ratingType === 'like') {
-        commissionRatings.likes = Math.max(0, commissionRatings.likes - 1);
-      } else if (ratingType === 'dislike') {
-        commissionRatings.dislikes = Math.max(0, commissionRatings.dislikes - 1);
-      }
-      
-      // 更新用户在该委托上的赞踩状态
-      userRatings[deviceId].commissions[commissionId] = {
-        type: null,
-        timestamp: new Date().toISOString()
-      };
-      
-      // 保存更新后的数据
-      ratings[commissionId] = commissionRatings;
-      store.set('ratings', ratings);
-      store.set('userRatingLimits', userRatings);
-      
-      return { 
-        success: true, 
-        likes: commissionRatings.likes,
-        dislikes: commissionRatings.dislikes,
-        userRating: null,
-        remainingCount: 10 - userRatings[deviceId].count
-      };
-    }
-  } catch (error) {
-    log(`处理赞踩操作失败: ${error.message}`, 'error');
-    return { 
-      success: false, 
-      error: 'processing-failed', 
-      message: '处理赞踩失败，请稍后再试' 
-    };
-  }
-});
-
-// 管理员删除委托
-ipcMain.handle('admin-delete-commission', async (event, id) => {
-  const deviceId = getDeviceId();
-  log(`尝试管理员删除委托，设备ID: ${deviceId}，委托ID: ${id}`);
-  
-  try {
-    // 获取当前委托列表
-    const commissions = store.get('commissions');
-    
-    // 过滤掉要删除的委托
-    const updatedCommissions = commissions.filter(commission => commission.id !== id);
-    
-    // 保存更新后的委托列表
-    store.set('commissions', updatedCommissions);
-    
-    // 删除相关联的消息
-    const messages = store.get('messages');
-    if (messages[id]) {
-      delete messages[id];
-      store.set('messages', messages);
-    }
-    
-    log(`管理员成功删除委托，委托ID: ${id}`);
-    return { success: true };
-  } catch (error) {
-    log(`管理员删除委托失败: ${error.message}`, 'error');
-    return { success: false, error: error.message };
-  }
-});
-
-// 管理员删除消息
-ipcMain.handle('admin-delete-message', async (event, { commissionId, messageIndex }) => {
-  const deviceId = getDeviceId();
-  log(`尝试管理员删除消息，设备ID: ${deviceId}，委托ID: ${commissionId}，消息索引: ${messageIndex}`);
-  
-  try {
-    // 获取所有消息
-    const messages = store.get('messages');
-    
-    // 检查委托是否存在
-    if (!messages[commissionId] || !Array.isArray(messages[commissionId])) {
-      return { error: 'commission-not-found', message: '未找到相关委托的消息' };
-    }
-    
-    // 检查索引是否有效
-    if (messageIndex < 0 || messageIndex >= messages[commissionId].length) {
-      return { error: 'invalid-index', message: '无效的消息索引' };
-    }
-    
-    // 删除消息
-    messages[commissionId].splice(messageIndex, 1);
-    store.set('messages', messages);
-    
-    log(`管理员成功删除消息，委托ID: ${commissionId}，消息索引: ${messageIndex}`);
-    return { success: true };
-  } catch (error) {
-    log(`管理员删除消息失败: ${error.message}`, 'error');
-    return { error: 'delete-failed', message: '删除消息失败' };
-  }
-});
-
-// 检查内容安全
-ipcMain.handle('check-content', async (event, content) => {
-  try {
-    // 简单的内容检查
-    const hasMaliciousCode = containsMaliciousCode(content);
-    if (hasMaliciousCode) {
-      return { 
-        passed: false, 
-        reason: '检测到潜在危险内容' 
-      };
-    }
-    
-    return { passed: true };
-  } catch (error) {
-    log(`内容检查失败: ${error.message}`, 'error');
-    return { error: 'check-failed', message: '内容检查失败' };
-  }
-});
-
-// 辅助函数：检查内容是否包含恶意代码
-function containsMaliciousCode(content) {
-  if (!content || typeof content !== 'string') return false;
-  
-  // 检查常见的恶意代码模式
-  const suspiciousPatterns = [
-    /<script>/i,
-    /javascript:/i,
-    /onload=/i,
-    /onerror=/i,
-    /eval\(/i,
-    /document\.cookie/i,
-    /localStorage/i,
-    /sessionStorage/i,
-    /fetch\(/i,
-    /xhr\./i
-  ];
-  
-  return suspiciousPatterns.some(pattern => pattern.test(content));
-}
-
 // 检查评论限制
 ipcMain.handle('check-comment-limit', (event) => {
   try {
@@ -1184,5 +1050,38 @@ ipcMain.handle('check-comment-limit', (event) => {
   }
 });
 
-// 导出 store 供其他模块使用
-module.exports = { store }; 
+// 自动更新相关处理程序
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    log('手动检查更新');
+    autoUpdater.checkForUpdates();
+    return {
+      success: true,
+      message: '开始检查更新'
+    };
+  } catch (error) {
+    log(`检查更新失败: ${error.message}`, 'error');
+    return {
+      success: false,
+      error: 'update-check-failed',
+      message: '检查更新失败'
+    };
+  }
+});
+
+ipcMain.handle('install-update', async () => {
+  try {
+    log('用户请求安装更新');
+    autoUpdater.quitAndInstall(false, true);
+    return {
+      success: true
+    };
+  } catch (error) {
+    log(`安装更新失败: ${error.message}`, 'error');
+    return {
+      success: false,
+      error: 'update-install-failed',
+      message: '安装更新失败'
+    };
+  }
+}); 

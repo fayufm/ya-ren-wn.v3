@@ -1,7 +1,7 @@
 {
   "name": "yaren-app-portable",
   "productName": "牙人",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "牙人委托发布与查看应用（便携版）",
   "main": "main-compat.js",
   "scripts": {
@@ -33,6 +33,48 @@
   },
   "dependencies": {
     "axios": "^1.9.0",
+    "electron-updater": "^6.6.2",
     "uuid": "^11.1.0"
+  },
+  "build": {
+    "appId": "com.fayufm.yaren",
+    "productName": "牙人",
+    "copyright": "Copyright © 2024 ${author}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!**/*.{map,md}",
+      "!{.git,.github,.vscode,build,dist,node_modules,temp_server}/**/*"
+    ],
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "http://8.155.16.247:3000/updates"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "yaren.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "牙人-便携版-${version}.exe"
+    }
   }
 }
