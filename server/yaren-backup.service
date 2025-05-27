@@ -1,0 +1,11 @@
+[Unit]
+Description=Yaren Server Backup Service
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/bin/bash /root/yaren/server/backup.sh
+
+[Install]
+WantedBy=multi-user.target 

@@ -560,8 +560,8 @@ function showTab(tab) {
   } else if (tab === myTab) {
     myTab.classList.add('active');
     myView.classList.add('active');
-    loadMyCommissions(); // 加载我的委托
-    loadMyMessages(); // 加载我的消息
+    if (myCommissions) loadMyCommissions(); // 加载我的委托
+    if (myMessages) loadMyMessages(); // 加载我的消息
     
     // 标记所有通知为已读
     if (window.NotificationSystem) {
@@ -741,6 +741,11 @@ function filterCommissionsByLocation(commissions, location) {
 
 // 加载我的委托
 async function loadMyCommissions() {
+  if (!myCommissions) {
+    console.error('myCommissions元素不存在');
+    return;
+  }
+
   try {
     const commissions = await window.api.getMyCommissions();
     
@@ -942,8 +947,8 @@ async function getAllUserMessages() {
         
         if (Array.isArray(messages)) {
           // 找出当前用户发布的消息
-          const userMessages = messages.filter(msg => msg.deviceId === deviceId);
-          allMessages = allMessages.concat(userMessages);
+        const userMessages = messages.filter(msg => msg.deviceId === deviceId);
+        allMessages = allMessages.concat(userMessages);
         }
       } catch (error) {
         console.error(`获取委托(${commission.id})消息失败:`, error);
@@ -960,6 +965,11 @@ async function getAllUserMessages() {
 
 // 加载我的消息记录
 async function loadMyMessages() {
+  if (!myMessages) {
+    console.error('myMessages元素不存在');
+    return;
+  }
+
   myMessages.innerHTML = '';
   
   try {
@@ -1000,51 +1010,15 @@ async function loadMyMessages() {
           // 只显示最近的3条消息
           const recentMessages = messages.slice(-3);
           
-          for (const msg of recentMessages) {
-            console.log('消息内容对象:', msg);
+          for (const message of recentMessages) {
             const messageItem = document.createElement('div');
             messageItem.className = 'message-item';
-            
-            // 确保消息内容存在并且是有效字符串
-            let content = '(空消息)';
-            if (msg && typeof msg.content === 'string' && msg.content.trim() !== '') {
-              content = msg.content;
-            } else {
-              console.warn('消息内容无效或为空:', msg);
-            }
-            const timestamp = msg && msg.timestamp ? formatDate(msg.timestamp) : '未知时间';
-            
-            // 创建消息主体容器
-            const messageBody = document.createElement('div');
-            messageBody.className = 'message-body';
-            messageBody.innerHTML = `
-              <div class="message-content">${escapeHtml(content)}</div>
-              <div class="message-time">${timestamp}</div>
+            messageItem.innerHTML = `
+              <div class="message-content">${message.content}</div>
+              <div class="message-time">${new Date(message.timestamp).toLocaleString()}</div>
             `;
             
-            // 创建删除按钮
-            const deleteButton = document.createElement('button');
-            deleteButton.className = 'delete-message-btn';
-            deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
-            deleteButton.title = '删除消息';
-            
-            // 阻止删除按钮的点击事件冒泡到消息项
-            deleteButton.addEventListener('click', (e) => {
-              e.stopPropagation();
-              deleteUserMessage(commission.id, msg.id);
-            });
-            
-            // 将删除按钮和消息主体添加到消息项
-            messageItem.appendChild(deleteButton);
-            messageItem.appendChild(messageBody);
-            
-            // 添加右键菜单事件
-            messageItem.addEventListener('contextmenu', (e) => {
-              e.preventDefault(); // 阻止默认右键菜单
-              deleteUserMessage(commission.id, msg.id); // 调用删除功能
-            });
-            
-            // 添加点击事件处理程序，点击消息项时跳转到对应的委托详情页面
+            // 添加点击事件处理程序
             messageItem.addEventListener('click', () => {
               console.log(`点击消息项，准备跳转到委托[${commission.id}]的详情页面`);
               showCommissionDetail(commission.id);
@@ -2193,10 +2167,10 @@ function addNavButtonsAnimation() {
 }
 
 // 事件监听
-homeTab.addEventListener('click', () => showTab('home'));
-myTab.addEventListener('click', () => showTab('my'));
-createTab.addEventListener('click', () => showTab('create'));
-backButton.addEventListener('click', () => showTab('home'));
+homeTab.addEventListener('click', () => showTab(homeTab));
+myTab.addEventListener('click', () => showTab(myTab));
+createTab.addEventListener('click', () => showTab(createTab));
+backButton.addEventListener('click', () => showTab(homeTab));
 
 // 暗黑模式切换
 darkModeToggle.addEventListener('change', async () => {
@@ -2677,16 +2651,16 @@ async function initApp() {
       } else {
         console.error('API未初始化，某些功能可能不可用');
       }
-    }
-    
+  }
+  
     // 检查API是否具有必要的方法
     const requiredMethods = ['getCommissions', 'getMyCommissions', 'getMessages'];
     const missingMethods = requiredMethods.filter(method => !window.api || typeof window.api[method] !== 'function');
     
     if (missingMethods.length > 0) {
       console.error(`API缺少必要的方法: ${missingMethods.join(', ')}`);
-    }
-    
+  }
+  
     // 初始化各个视图
     showTab(homeTab);
     
@@ -2715,10 +2689,10 @@ async function initApp() {
     
     // 添加窗口控制按钮
     findAndAttachToSystemButtons();
-    
+  
     // 添加导航按钮动画
     addNavButtonsAnimation();
-    
+  
     // 添加拖拽彩蛋样式
     addDragEasterEggStyles();
     
@@ -2730,7 +2704,7 @@ async function initApp() {
     console.log('应用初始化完成');
   } catch (e) {
     console.error('应用初始化失败:', e);
-  }
+    }
 }
 
 // 设置全屏监听
@@ -3114,7 +3088,7 @@ async function sendChatMessage() {
       try {
         // 获取设备ID
         const deviceId = await window.api.getDeviceId();
-        
+    
         // 创建消息对象
         const messageData = {
           content: messageText,
@@ -3124,14 +3098,14 @@ async function sendChatMessage() {
         
         // 发送消息到服务器
         const response = await window.api.addMessage(currentCommissionId, messageData);
-        
+    
         if (response && response.success) {
           // 清空输入框
-          messageInput.value = '';
-          
-          // 重新加载消息
-          await loadChatMessages(currentCommissionId);
-          
+    messageInput.value = '';
+    
+    // 重新加载消息
+    await loadChatMessages(currentCommissionId);
+    
           // 如果是颜文字且未激活颜文字模式，则有机会触发彩蛋
           if (isKaomoji && !kaomojiMode && Math.random() < 0.3) {
             activateKaomojiMode(messageText);
@@ -3143,12 +3117,12 @@ async function sendChatMessage() {
           }
           
           // 成功提示
-          showToast('消息已发送');
+    showToast('消息已发送');
         } else {
           throw new Error('消息发送失败');
         }
-      } catch (error) {
-        console.error('发送消息失败:', error);
+  } catch (error) {
+    console.error('发送消息失败:', error);
         showCustomAlert('消息发送失败，请稍后重试。');
       }
     }

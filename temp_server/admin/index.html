@@ -343,7 +343,7 @@ sha512: ..."></textarea>
       
       // 使用API验证管理员身份
       try {
-        const response = await fetch(API_ENDPOINTS.ADMIN_DASHBOARD, {
+        const response = await fetch('/api/admin/dashboard', {
           headers: {
             'Authorization': `Basic ${btoa(`${username}:${password}`)}`,
           }
@@ -357,10 +357,14 @@ sha512: ..."></textarea>
           document.getElementById('login-section').classList.add('hidden');
           document.getElementById('verification-section').classList.remove('hidden');
         } else {
+          const errorData = await response.json();
+          console.error('登录失败:', errorData);
+          document.getElementById('login-error').textContent = errorData.message || '用户名或密码错误';
           document.getElementById('login-error').classList.remove('hidden');
         }
       } catch (error) {
         console.error('登录失败:', error);
+        document.getElementById('login-error').textContent = '登录失败，请检查网络连接';
         document.getElementById('login-error').classList.remove('hidden');
       }
     });

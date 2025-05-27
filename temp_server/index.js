@@ -17,6 +17,16 @@ app.use(cors());
 app.use(bodyParser.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
 
+// 添加调试日志中间件
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log('请求头:', req.headers);
+  next();
+});
+
+// 挂载管理员路由
+app.use('/api/admin', adminRouter);
+
 // 数据存储路径
 const DATA_DIR = path.join(__dirname, 'data');
 const COMMISSIONS_FILE = path.join(DATA_DIR, 'commissions.json');
@@ -288,18 +298,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// 添加调试日志中间件
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  next();
-});
-
-// 管理员API路由
-app.use('/admin', adminRouter);
-
-// 静态文件服务（如果需要托管管理页面）
-app.use('/admin-ui', express.static(path.join(__dirname, 'admin')));
-
 // 检查更新端点
 app.get('/check-update', (req, res) => {
   const currentVersion = req.query.version || '1.0.0';
@@ -389,6 +387,9 @@ function compareVersions(v1, v2) {
 app.post('/webhook', (req, res) => {
   webhookHandler(req, res);
 });
+
+// 静态文件服务（如果需要托管管理页面）
+app.use('/admin-ui', express.static(path.join(__dirname, 'admin')));
 
 // 启动服务器，监听所有IP地址
 app.listen(PORT, HOST, () => {

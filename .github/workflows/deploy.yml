@@ -2,16 +2,23 @@ name: 部署到阿里云ECS服务器
 
 on:
   push:
+<<<<<<< HEAD
     branches: [ 1.0.1 ]  # 触发分支
 
 env:
   SERVER_IP: 8.155.16.247
   DEPLOY_DIR: /var/www/yaren-server
+=======
+    branches: [ main ]  # 根据您的主分支名称调整，可能是 main 或 master
+    paths: 
+      - 'server/**'     # 只有当 server 目录中的文件变更时才触发
+>>>>>>> 48c938b10b3bd948b78d7ef2d4cb3cafafeb2f29
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+<<<<<<< HEAD
       - name:  检出代码
         uses: actions/checkout@v3  # 升级到最新版
 
@@ -65,3 +72,26 @@ jobs:
 
       - name: 清理本地临时文件
         run: rm -f deploy.tar.gz
+=======
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 安装 SSH 密钥
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        known_hosts: unnecessary
+        if_key_exists: replace
+        
+    - name: 添加服务器到已知主机
+      run: ssh-keyscan -H 8.155.16.247 >> ~/.ssh/known_hosts
+      
+    - name: 部署到服务器
+      run: |
+        cd server
+        rsync -avz --exclude 'node_modules' --exclude '.git' . root@8.155.16.247:/var/www/yaren-server/
+        
+    - name: 远程执行部署命令
+      run: |
+        ssh root@8.155.16.247 "cd /var/www/yaren-server && npm install --production && pm2 restart app.js || pm2 start app.js --name yaren-server"
+>>>>>>> 48c938b10b3bd948b78d7ef2d4cb3cafafeb2f29

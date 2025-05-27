@@ -5,7 +5,7 @@
     return; // 如果已存在API_ENDPOINTS，直接返回，避免重复声明
   }
   
-  const API_SERVER = 'http://8.155.16.247:3000';
+  const API_SERVER = window.location.origin || 'http://8.155.16.247:3000';
 
   // API端点
   const API_ENDPOINTS = {
@@ -27,27 +27,21 @@
     HEALTH: `${API_SERVER}/health`,
     
     // 管理API
-    ADMIN_DASHBOARD: `${API_SERVER}/admin/dashboard`,
-    ADMIN_COMMISSIONS: `${API_SERVER}/admin/commissions`,
-    ADMIN_MESSAGES: `${API_SERVER}/admin/messages`,
-    ADMIN_GET_MESSAGES: `${API_SERVER}/admin/messages`,
-    DELETE_COMMISSION: (id) => `${API_SERVER}/admin/commissions/${id}`,
-    DELETE_MESSAGE: (commissionId, messageId) => `${API_SERVER}/admin/commissions/${commissionId}/messages/${messageId}`,
-    DELETE_COMMISSION_FILE: (commissionId, fileIndex) => `${API_SERVER}/admin/commissions/${commissionId}/files/${fileIndex}`,
-    UPDATE_RATINGS: (commissionId) => `${API_SERVER}/admin/commissions/${commissionId}/ratings`,
-    ADMIN_SETTINGS: `${API_SERVER}/admin/settings`,
-    ADMIN_CHANGE_PASSWORD: `${API_SERVER}/admin/change-password`
+    ADMIN_DASHBOARD: `${API_SERVER}/api/admin/dashboard`,
+    ADMIN_COMMISSIONS: `${API_SERVER}/api/admin/commissions`,
+    ADMIN_MESSAGES: `${API_SERVER}/api/admin/messages`,
+    ADMIN_GET_MESSAGES: `${API_SERVER}/api/admin/messages`,
+    DELETE_COMMISSION: (id) => `${API_SERVER}/api/admin/commissions/${id}`,
+    DELETE_MESSAGE: (commissionId, messageId) => `${API_SERVER}/api/admin/commissions/${commissionId}/messages/${messageId}`,
+    DELETE_COMMISSION_FILE: (commissionId, fileIndex) => `${API_SERVER}/api/admin/commissions/${commissionId}/files/${fileIndex}`,
+    UPDATE_RATINGS: (commissionId) => `${API_SERVER}/api/admin/commissions/${commissionId}/ratings`,
+    ADMIN_SETTINGS: `${API_SERVER}/api/admin/settings`,
+    ADMIN_CHANGE_PASSWORD: `${API_SERVER}/api/admin/change-password`,
+    ADMIN_VERIFY: `${API_SERVER}/api/admin/verify`
   };
 
-  // 导出API配置
-  if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-      API_SERVER,
-      API_ENDPOINTS
-    };
-  } else if (typeof window !== 'undefined') {
-    // 在浏览器环境中，将API配置添加到全局window对象
-    window.API_SERVER = API_SERVER;
+  // 将API_ENDPOINTS暴露到全局作用域
+  if (typeof window !== 'undefined') {
     window.API_ENDPOINTS = API_ENDPOINTS;
   }
 })(); 

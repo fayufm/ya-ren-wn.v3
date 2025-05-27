@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:;">
   <title>牙人管理后台</title>
   <style>
     * {
@@ -324,34 +325,83 @@
     const DEFAULT_ADMIN = { username: 'xieshuoxing', password: '410425200409186093' };
     
     // 登录表单处理
-    document.getElementById('login-form').addEventListener('submit', function(event) {
+    document.getElementById('login-form').addEventListener('submit', async function(event) {
       event.preventDefault();
       
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
       
-      // 简单的验证，实际应使用安全的认证方式
-      if (username === DEFAULT_ADMIN.username && password === DEFAULT_ADMIN.password) {
-        // 显示双重验证界面
-        document.getElementById('login-section').classList.add('hidden');
-        document.getElementById('verification-section').classList.remove('hidden');
-      } else {
+      console.log('尝试登录到:', API_ENDPOINTS.ADMIN_DASHBOARD);
+      
+      // 使用API验证管理员身份
+      try {
+        const response = await fetch(API_ENDPOINTS.ADMIN_DASHBOARD, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Basic ${btoa(`${username}:${password}`)}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('登录响应:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+        
+        if (response.ok) {
+          // 存储登录凭据
+          localStorage.setItem('adminPassword', password);
+          
+          // 显示双重验证表单
+          document.getElementById('login-section').classList.add('hidden');
+          document.getElementById('verification-section').classList.remove('hidden');
+        } else {
+          const errorData = await response.json();
+          console.error('登录失败:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          });
+          document.getElementById('login-error').textContent = errorData.message || '用户名或密码错误';
+          document.getElementById('login-error').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('登录失败:', {
+          error: error.message,
+          stack: error.stack
+        });
+        document.getElementById('login-error').textContent = '登录失败，请检查网络连接';
         document.getElementById('login-error').classList.remove('hidden');
       }
     });
     
     // 验证码验证处理
-    document.getElementById('verification-form').addEventListener('submit', function(event) {
+    document.getElementById('verification-form').addEventListener('submit', async function(event) {
       event.preventDefault();
       
       const verificationCode = document.getElementById('verification-code').value;
+      const password = localStorage.getItem('adminPassword') || DEFAULT_ADMIN.password;
       
-      // 简单的验证码验证
-      if (verificationCode === '410425199501221028') {
-        document.getElementById('verification-section').classList.add('hidden');
-        document.getElementById('admin-panel').classList.remove('hidden');
-        loadDashboard();
-      } else {
+      try {
+        const response = await fetch('/api/admin/verify', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${btoa(`${DEFAULT_ADMIN.username}:${password}`)}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ verificationCode })
+        });
+        
+        if (response.ok) {
+          document.getElementById('verification-section').classList.add('hidden');
+          document.getElementById('admin-panel').classList.remove('hidden');
+          loadDashboard();
+        } else {
+          document.getElementById('verification-error').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('验证失败:', error);
         document.getElementById('verification-error').classList.remove('hidden');
       }
     });

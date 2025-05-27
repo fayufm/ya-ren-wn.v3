@@ -2997,3 +2997,106 @@ body.dark-mode.classical-chinese-mode .delete-message-btn:hover {
     opacity: 1;
   }
 }
+
+/* 我的视图样式 */
+.my-content {
+  margin-top: 20px;
+}
+
+.my-content h2 {
+  margin-bottom: 15px;
+  color: var(--primary-color);
+}
+
+/* 消息列表样式 */
+.my-messages-container {
+  margin-top: 20px;
+}
+
+.commission-messages {
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.commission-message-title {
+  color: var(--primary-color);
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.commission-message-title:hover {
+  color: var(--hover-color);
+}
+
+.messages-list {
+  margin-top: 10px;
+}
+
+.message-item {
+  padding: 10px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.message-item:last-child {
+  border-bottom: none;
+}
+
+.message-item:hover {
+  background-color: var(--hover-color);
+}
+
+.message-content {
+  margin-bottom: 5px;
+  color: var(--text-color);
+}
+
+.message-time {
+  font-size: 12px;
+  color: var(--secondary-text-color);
+}
+
+.more-messages {
+  text-align: center;
+  padding: 10px;
+  color: var(--primary-color);
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.more-messages:hover {
+  color: var(--hover-color);
+}
+
+.empty-message {
+  text-align: center;
+  padding: 20px;
+  color: var(--secondary-text-color);
+  background-color: var(--card-background);
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+/* 深色模式适配 */
+body.dark-mode .commission-messages {
+  background-color: var(--dark-card-background);
+  border-color: var(--dark-border-color);
+}
+
+body.dark-mode .message-item {
+  border-color: var(--dark-border-color);
+}
+
+body.dark-mode .message-item:hover {
+  background-color: var(--dark-hover-color);
+}
+
+body.dark-mode .empty-message {
+  background-color: var(--dark-card-background);
+  color: var(--dark-secondary-text-color);
+}

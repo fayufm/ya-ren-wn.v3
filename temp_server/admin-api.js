@@ -54,10 +54,52 @@ function writeData(filePath, data) {
 
 // 简单的管理员身份验证中间件
 function adminAuth(req, res, next) {
-  // 由于这是本地开发服务器，暂时不实现身份验证
-  // 在实际生产环境中，应当实现严格的身份验证
-  console.log('管理员API请求:', req.method, req.url);
-  next();
+  try {
+    // 获取Authorization头
+    const authHeader = req.headers.authorization;
+    console.log('收到认证请求:', {
+      url: req.url,
+      method: req.method,
+      authHeader: authHeader ? '存在' : '不存在'
+    });
+
+    if (!authHeader || !authHeader.startsWith('Basic ')) {
+      console.log('认证失败: 缺少或无效的Authorization头');
+      return res.status(401).json({ error: 'unauthorized', message: '需要认证' });
+    }
+
+    // 解码Base64认证信息
+    const base64Credentials = authHeader.split(' ')[1];
+    const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
+    const [username, password] = credentials.split(':');
+
+    // 获取管理员配置
+    const adminConfig = initAdminConfig();
+    console.log('认证尝试:', { 
+      username, 
+      providedPassword: password, 
+      expectedUsername: adminConfig.username,
+      expectedPassword: adminConfig.passwordHash
+    });
+
+    // 验证用户名和密码
+    if (username !== adminConfig.username) {
+      console.log('认证失败: 用户名不匹配');
+      return res.status(401).json({ error: 'unauthorized', message: '用户名或密码错误' });
+    }
+
+    if (password !== adminConfig.passwordHash) {
+      console.log('认证失败: 密码不匹配');
+      return res.status(401).json({ error: 'unauthorized', message: '用户名或密码错误' });
+    }
+
+    // 认证通过
+    console.log('认证成功:', username);
+    next();
+  } catch (error) {
+    console.error('认证失败:', error);
+    res.status(500).json({ error: '认证失败', message: error.message });
+  }
 }
 
 // 应用认证中间件
