@@ -2916,3 +2916,84 @@ body.dark-mode.classical-chinese-mode .delete-message-btn:hover {
   margin-left: 10px;
   cursor: pointer;
 }
+
+/* 通知红点样式 */
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 10px;
+  height: 10px;
+  background-color: #ff3b30;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Toast通知样式 */
+.notification-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 300px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  z-index: 9999;
+  animation: slide-in 0.3s ease-out;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.notification-toast:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.notification-toast-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #eee;
+}
+
+.notification-toast-header span {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.notification-toast-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #aaa;
+}
+
+.notification-toast-close:hover {
+  color: #555;
+}
+
+.notification-toast-body {
+  padding: 15px;
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.notification-toast-body:hover {
+  background-color: #f8f9fa;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

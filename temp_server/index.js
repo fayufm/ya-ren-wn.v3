@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const adminRouter = require('./admin-api');
+const webhookHandler = require('./webhook-handler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -131,39 +132,72 @@ app.get('/api/commissions/:id', (req, res) => {
 
 // 获取委托的消息
 app.get('/api/commissions/:id/messages', (req, res) => {
+    const commissionId = req.params.id;
+    
     try {
-        const commissionId = req.params.id;
-        const messages = readData(MESSAGES_FILE) || {};
-        res.json(messages[commissionId] || []);
+        // 加载消息数据
+        const messagesData = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'messages.json'), 'utf8'));
+        
+        // 获取特定委托的消息
+        const messages = messagesData[commissionId] || [];
+        
+        // 添加消息访问日志
+        console.log(`[${new Date().toISOString()}] 获取委托(${commissionId})的消息: ${messages.length}条`);
+        
+        // 返回消息列表
+        res.json(messages);
     } catch (error) {
+        console.error(`获取委托(${commissionId})的消息失败:`, error);
         res.status(500).json({ error: '获取消息失败', message: error.message });
     }
 });
 
-// 添加消息
+// 添加委托消息
 app.post('/api/commissions/:id/messages', (req, res) => {
+    const commissionId = req.params.id;
+    const messageData = req.body;
+    
     try {
-        const commissionId = req.params.id;
-        const { content, deviceId } = req.body;
-        
-        const messages = readData(MESSAGES_FILE) || {};
-        
-        if (!messages[commissionId]) {
-            messages[commissionId] = [];
+        // 验证消息数据
+        if (!messageData.content || !messageData.deviceId) {
+            return res.status(400).json({ error: '无效的消息数据', message: '消息内容和设备ID是必需的' });
         }
         
+        // 加载消息数据
+        let messagesData = {};
+        try {
+            messagesData = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'messages.json'), 'utf8'));
+        } catch (err) {
+            // 如果文件不存在或为空，创建新的消息数据对象
+            messagesData = {};
+        }
+        
+        // 如果该委托没有消息列表，创建一个新的
+        if (!messagesData[commissionId]) {
+            messagesData[commissionId] = [];
+        }
+        
+        // 创建新消息对象
         const newMessage = {
-            id: uuidv4(),
-            content,
-            deviceId,
-            timestamp: new Date().toISOString()
+            id: `msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            content: messageData.content,
+            deviceId: messageData.deviceId,
+            timestamp: messageData.timestamp || new Date().toISOString()
         };
         
-        messages[commissionId].push(newMessage);
-        writeData(MESSAGES_FILE, messages);
+        // 添加新消息
+        messagesData[commissionId].push(newMessage);
         
-        res.status(201).json(newMessage);
+        // 保存消息数据
+        fs.writeFileSync(path.join(DATA_DIR, 'messages.json'), JSON.stringify(messagesData, null, 2), 'utf8');
+        
+        // 添加消息日志
+        console.log(`[${new Date().toISOString()}] 添加消息到委托(${commissionId}): ${newMessage.id}`);
+        
+        // 返回成功响应
+        res.json({ success: true, message: newMessage });
     } catch (error) {
+        console.error(`添加消息到委托(${commissionId})失败:`, error);
         res.status(500).json({ error: '添加消息失败', message: error.message });
     }
 });
@@ -350,6 +384,11 @@ function compareVersions(v1, v2) {
   
   return 0;
 }
+
+// GitHub webhook端点
+app.post('/webhook', (req, res) => {
+  webhookHandler(req, res);
+});
 
 // 启动服务器，监听所有IP地址
 app.listen(PORT, HOST, () => {

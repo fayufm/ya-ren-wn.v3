@@ -539,34 +539,54 @@ function createPlane(container, direction) {
   }, duration * 1000 + 100);
 }
 
-// 显示指定选项卡
+// 显示特定标签页
 function showTab(tab) {
-  // 移除所有选项卡的活动状态
-  homeTab.classList.remove('active');
-  myTab.classList.remove('active');
-  createTab.classList.remove('active');
-  
   // 隐藏所有视图
   homeView.classList.remove('active');
   myView.classList.remove('active');
   createView.classList.remove('active');
   detailView.classList.remove('active');
   
-  // 激活选择的选项卡
-  if (tab === 'home') {
+  // 重置所有标签页的活动状态
+  homeTab.classList.remove('active');
+  myTab.classList.remove('active');
+  createTab.classList.remove('active');
+  
+  // 根据所选标签页显示相应视图
+  if (tab === homeTab) {
     homeTab.classList.add('active');
     homeView.classList.add('active');
-    loadCommissions();
-  } else if (tab === 'my') {
+    loadCommissions(); // 刷新委托列表
+  } else if (tab === myTab) {
     myTab.classList.add('active');
     myView.classList.add('active');
-    loadMyCommissions();
-    loadMyMessages();
-  } else if (tab === 'create') {
+    loadMyCommissions(); // 加载我的委托
+    loadMyMessages(); // 加载我的消息
+    
+    // 标记所有通知为已读
+    if (window.NotificationSystem) {
+      window.NotificationSystem.markAllAsRead();
+    }
+  } else if (tab === createTab) {
     createTab.classList.add('active');
     createView.classList.add('active');
-    resetCommissionForm();
+    resetCommissionForm(); // 重置表单
+    
+    // 检查委托发布限制
+    checkCommissionLimit().then(canPublish => {
+      if (!canPublish) {
+        // 如果达到限制，禁用发布按钮
+        const publishButton = document.getElementById('publish-button');
+        if (publishButton) {
+          publishButton.disabled = true;
+          publishButton.classList.add('disabled');
+        }
+      }
+    }).catch(error => {
+      console.error('检查委托限制失败:', error);
+    });
   } else if (tab === 'detail') {
+    // 详情页面特殊处理
     detailView.classList.add('active');
   }
 }
@@ -835,52 +855,52 @@ async function updateLimitsInfo() {
 // 检查评论限制
 async function checkCommentLimit() {
   try {
-    console.log('开始检查评论限制...');
+    // 获取今天已发表的评论数量
+    const commentsToday = await getTodayCommentsCount();
     
-    // 获取所有评论
-    const allMessages = await getAllUserMessages();
-    console.log(`获取到用户评论总数: ${allMessages.length}`);
-    
-    if (allMessages.length > 0) {
-      console.log('示例评论:', allMessages[0]);
+    // 检查每日限制
+    if (commentsToday >= COMMENT_DAILY_LIMIT) {
+      console.log(`已达到每日评论限制: ${commentsToday}/${COMMENT_DAILY_LIMIT}`);
+      return false;
     }
     
-    // 检查总数限制
-    const totalCount = allMessages.length;
-    const totalLimitReached = totalCount >= COMMENT_TOTAL_LIMIT;
+    // 获取总评论数
+    const allUserMessages = await getAllUserMessages();
+    const totalComments = allUserMessages.length;
     
-    // 检查今日发布限制
-    const today = new Date().toISOString().split('T')[0]; // 获取当天日期，格式为YYYY-MM-DD
-    console.log('当前日期:', today);
+    // 检查总量限制
+    if (totalComments >= COMMENT_TOTAL_LIMIT) {
+      console.log(`已达到总评论限制: ${totalComments}/${COMMENT_TOTAL_LIMIT}`);
+      return false;
+    }
     
-    // 计算今天发布的评论数量
-    const todayMessages = allMessages.filter(message => {
-      const messageDate = new Date(message.timestamp).toISOString().split('T')[0];
-      return messageDate === today;
+    // 未达到限制，可以发表评论
+    return true;
+  } catch (error) {
+    console.error('检查评论限制时出错:', error);
+    // 出错时默认允许发表评论
+    return true;
+  }
+}
+
+// 获取今天发表的评论数量
+async function getTodayCommentsCount() {
+  try {
+    const allUserMessages = await getAllUserMessages();
+    
+    // 获取今天的日期（格式：YYYY-MM-DD）
+    const today = new Date().toISOString().split('T')[0];
+    
+    // 过滤出今天发表的评论
+    const todayComments = allUserMessages.filter(msg => {
+      const commentDate = new Date(msg.timestamp).toISOString().split('T')[0];
+      return commentDate === today;
     });
     
-    console.log(`今日评论数量: ${todayMessages.length}`);
-    if (todayMessages.length > 0) {
-      console.log('今日评论示例:', todayMessages[0]);
-    }
-    
-    const dailyCount = todayMessages.length;
-    const dailyLimitReached = dailyCount >= COMMENT_DAILY_LIMIT;
-    
-    return {
-      dailyCount,
-      totalCount,
-      dailyLimitReached,
-      totalLimitReached
-    };
+    return todayComments.length;
   } catch (error) {
-    console.error('检查评论限制失败:', error);
-    return {
-      dailyCount: 0,
-      totalCount: 0,
-      dailyLimitReached: false,
-      totalLimitReached: false
-    };
+    console.error('获取今日评论数量失败:', error);
+    return 0;
   }
 }
 
@@ -2678,36 +2698,38 @@ async function initApp() {
     }
     
     try {
-      // 更新使用限制信息
+      // 加载限制信息
       await updateLimitsInfo();
     } catch (e) {
-      console.error('更新使用限制信息失败:', e);
+      console.error('加载限制信息失败:', e);
     }
     
-    // 设置窗口控制
-    setupWindowControls();
+    // 加载API端点配置
+    await loadSettings();
     
-    // 添加窗口切换监听
-    window.addEventListener('resize', handleWindowResize);
+    // 初始化截止日期选择器
+    initExpiryDatePicker();
+    
+    // 设置全屏监听
+    setupFullscreenListener();
+    
+    // 添加窗口控制按钮
+    findAndAttachToSystemButtons();
     
     // 添加导航按钮动画
     addNavButtonsAnimation();
     
-    // 添加拖拽彩蛋监听
-    setupDragDetection();
+    // 添加拖拽彩蛋样式
+    addDragEasterEggStyles();
     
-    // 添加全屏点击彩蛋监听
-    setupFullscreenListener();
-    
-    // 查找并附加到系统按钮
-    findAndAttachToSystemButtons();
-    
-    // 初始化日期选择器
-    initExpiryDatePicker();
+    // 初始化通知系统
+    if (window.NotificationSystem) {
+      window.NotificationSystem.init();
+    }
     
     console.log('应用初始化完成');
-  } catch (error) {
-    console.error('应用初始化失败:', error);
+  } catch (e) {
+    console.error('应用初始化失败:', e);
   }
 }
 
@@ -3071,80 +3093,68 @@ function addDragEasterEggStyles() {
 
 // 发送聊天消息
 async function sendChatMessage() {
-  const message = messageInput.value.trim();
-  
-  if (!message) {
-    showToast('请输入消息内容');
-    return;
-  }
-  
-  if (!currentCommissionId) {
-    showCustomAlert('无法发送消息，请先选择一个委托', '错误');
-    return;
-  }
-  
-  // 阻止过长消息
-  if (message.length > 500) {
-    showCustomAlert('消息长度不能超过500个字符', '消息过长');
-    return;
-  }
-    
   try {
-    // 检查是否设置了API
-    const settings = await window.api.getSettings();
-    if (!settings.apiEndpoints || settings.apiEndpoints.length === 0) {
-      showCustomAlert('请先设置您的API再发布评论', '设置提示');
-      // 自动切换到"我的"页面的API设置部分
-      showTab('my');
-      // 聚焦到API输入框
-      setTimeout(() => {
-        if (apiInput) apiInput.focus();
-      }, 500);
-      return;
-    }
+    const messageText = messageInput.value.trim();
+    if (!messageText) return;
     
     // 检查评论限制
-    const commentLimitStatus = await checkCommentLimit();
-    
-    if (commentLimitStatus.dailyLimitReached) {
-      showCustomAlert(`您今天已经发表了${COMMENT_DAILY_LIMIT}条评论，请明天再来发表`, '评论限制');
+    const canComment = await checkCommentLimit();
+    if (!canComment) {
+      showCustomAlert('您今日的评论次数已达到上限，请明天再试。');
       return;
     }
     
-    if (commentLimitStatus.totalLimitReached) {
-      showCustomAlert(`您总共已经发表了${COMMENT_TOTAL_LIMIT}条评论，已达到上限`, '评论限制');
-      return;
+    // 是否为颜文字模式
+    const isKaomoji = isKaomojiInput(messageText);
+    
+    if (currentCommissionId) {
+      // 显示加载提示
+      showToast('正在发送消息...');
+      
+      try {
+        // 获取设备ID
+        const deviceId = await window.api.getDeviceId();
+        
+        // 创建消息对象
+        const messageData = {
+          content: messageText,
+          deviceId: deviceId,
+          timestamp: new Date().toISOString()
+        };
+        
+        // 发送消息到服务器
+        const response = await window.api.addMessage(currentCommissionId, messageData);
+        
+        if (response && response.success) {
+          // 清空输入框
+          messageInput.value = '';
+          
+          // 重新加载消息
+          await loadChatMessages(currentCommissionId);
+          
+          // 如果是颜文字且未激活颜文字模式，则有机会触发彩蛋
+          if (isKaomoji && !kaomojiMode && Math.random() < 0.3) {
+            activateKaomojiMode(messageText);
+          }
+          
+          // 检查并刷新通知系统
+          if (window.NotificationSystem) {
+            window.NotificationSystem.checkNewMessages();
+          }
+          
+          // 成功提示
+          showToast('消息已发送');
+        } else {
+          throw new Error('消息发送失败');
+        }
+      } catch (error) {
+        console.error('发送消息失败:', error);
+        showCustomAlert('消息发送失败，请稍后重试。');
+      }
     }
-    
-    // 显示发送中状态
-    const sendingToast = showToast('发送中...');
-    
-    console.log(`准备发送消息 - 委托ID: ${currentCommissionId}, 消息内容: ${message}`);
-    
-    // 确保发送字符串类型的消息内容
-    const messageContent = String(message).trim();
-    const response = await window.api.addMessage(currentCommissionId, messageContent);
-    
-    console.log('发送消息的响应:', response);
-    
-    // 检查是否有错误
-    if (await handleApiError(response)) {
-      return;
-    }
-    
-    messageInput.value = '';
-    
-    // 重新加载消息
-    await loadChatMessages(currentCommissionId);
-    
-    // 显示成功提示
-    showToast('消息已发送');
-    
-    // 无论在哪个页面发送评论，都更新评论限制信息
-    await updateLimitsInfo();
   } catch (error) {
-    console.error('发送消息失败:', error);
-    showCustomAlert(`发送消息失败: ${error.message || '未知错误'}，请稍后再试`, '网络错误');
+    console.error('发送消息时出错:', error);
+    showCustomAlert('发送消息时出错，请稍后重试。');
   }
 }
 
