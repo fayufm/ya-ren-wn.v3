@@ -432,7 +432,7 @@ module.exports = { store };
 function setupAutoUpdater() {
   // 日志配置
   autoUpdater.logger = console;
-  log('自动更新已配置，当前版本：1.1.0');
+  log('自动更新已配置，当前版本：1.1.3');
 
   // 设置更新服务器URL (可选，如果在package.json中已配置)
   // autoUpdater.setFeedURL('http://8.155.16.247:3000/updates');
@@ -580,17 +580,10 @@ ipcMain.handle('get-commissions', async () => {
   try {
     const commissions = store.get('commissions') || [];
     // 过滤掉已删除的委托
-    return {
-      success: true,
-      commissions: commissions.filter(commission => !commission.deleted)
-    };
+    return commissions.filter(commission => !commission.deleted);
   } catch (error) {
     log(`获取委托列表失败: ${error.message}`, 'error');
-    return {
-      success: false,
-      error: 'fetch-failed',
-      message: '获取委托列表失败'
-    };
+    return [];
   }
 });
 
@@ -1084,4 +1077,21 @@ ipcMain.handle('install-update', async () => {
       message: '安装更新失败'
     };
   }
+});
+
+// 获取委托评分
+ipcMain.handle('get-commission-ratings', (event, commissionId) => {
+  const ratings = store.get('ratings') || {};
+  const commissionRatings = ratings[commissionId] || { likes: 0, dislikes: 0 };
+  
+  // 获取用户对该委托的赞踩状态
+  const userRatings = store.get('userRatingLimits') || {};
+  const deviceId = getDeviceId();
+  const userDailyRatings = userRatings[deviceId]?.commissions || {};
+  const userRatingForCommission = userDailyRatings[commissionId] || { type: null };
+  
+  return {
+    ...commissionRatings,
+    userRating: userRatingForCommission.type
+  };
 }); 
