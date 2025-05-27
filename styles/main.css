@@ -2786,3 +2786,133 @@ body.dark-mode.classical-chinese-mode .delete-message-btn {
 body.dark-mode.classical-chinese-mode .delete-message-btn:hover {
   color: #ff8c69; /* 橙红色，深色模式下更柔和 */
 }
+
+/* 通知组件样式 */
+.notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 300px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  border: 1px solid #e0e0e0;
+}
+
+.notification-content {
+  display: flex;
+  padding: 16px;
+  position: relative;
+}
+
+.notification-icon {
+  font-size: 20px;
+  color: #1890ff;
+  margin-right: 12px;
+  align-self: flex-start;
+}
+
+.notification-text {
+  flex: 1;
+  padding-right: 20px;
+}
+
+.notification-text span {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.notification-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.notification-button {
+  padding: 6px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.notification-button.primary {
+  background-color: #1890ff;
+  color: white;
+  border-color: #1890ff;
+}
+
+.notification-button:hover {
+  opacity: 0.8;
+}
+
+.notification-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  font-size: 14px;
+}
+
+.notification-close:hover {
+  color: #666;
+}
+
+/* 进度条样式 */
+.progress-bar {
+  height: 6px;
+  background-color: #f0f0f0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: #1890ff;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+#update-progress-text {
+  font-size: 12px;
+  color: #666;
+  text-align: right;
+}
+
+/* 错误横幅样式 */
+.error-banner {
+  position: fixed;
+  top: 40px;
+  left: 0;
+  right: 0;
+  background-color: #ff4d4f;
+  color: white;
+  padding: 10px 20px;
+  z-index: 1001;
+  text-align: center;
+}
+
+.error-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.error-close {
+  background: transparent;
+  border: none;
+  color: white;
+  margin-left: 10px;
+  cursor: pointer;
+}

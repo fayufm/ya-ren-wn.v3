@@ -671,7 +671,32 @@ function handleAddContact() {
 // 加载所有委托
 async function loadCommissions() {
   try {
+    // 检查API是否正确初始化
+    if (!window.api || !window.api.getCommissions) {
+      console.error('API未正确初始化，尝试使用ServerAPI');
+      if (window.ServerAPI && window.ServerAPI.getCommissions) {
+        window.api = window.ServerAPI;
+      } else {
+        throw new Error('API未初始化');
+      }
+    }
+    
+    console.log('正在加载委托列表...');
     const commissions = await window.api.getCommissions();
+    console.log('获取委托返回:', commissions);
+    
+    // 确保返回的是数组
+    if (!commissions || !Array.isArray(commissions)) {
+      console.error('API返回非数组数据:', commissions);
+      
+      if (commissions && commissions.error) {
+        throw new Error(`API错误: ${commissions.message || '未知错误'}`);
+      }
+      
+      // 如果不是数组，使用空数组代替
+      renderCommissionsList([], commissionsList);
+      return;
+    }
     
     // 根据当前选择的地区筛选
     const filteredCommissions = filterCommissionsByLocation(commissions, currentLocation);
@@ -679,6 +704,8 @@ async function loadCommissions() {
     renderCommissionsList(filteredCommissions, commissionsList);
   } catch (error) {
     console.error('加载委托失败:', error);
+    // 确保渲染空列表而不是报错
+    renderCommissionsList([], commissionsList);
     showCustomAlert('加载委托列表失败，请尝试刷新页面', '网络错误');
   }
 }
@@ -860,8 +887,26 @@ async function checkCommentLimit() {
 // 获取用户的所有评论
 async function getAllUserMessages() {
   try {
+    // 检查API是否正确初始化
+    if (!window.api || !window.api.getCommissions) {
+      console.error('API未正确初始化，尝试使用ServerAPI');
+      if (window.ServerAPI && window.ServerAPI.getCommissions) {
+        window.api = window.ServerAPI;
+      } else {
+        throw new Error('API未初始化');
+      }
+    }
+    
+    console.log('获取所有消息...');
+    
     // 获取所有委托（包括他人的委托）
     const commissions = await window.api.getCommissions();
+    
+    // 确保返回的是数组
+    if (!commissions || !Array.isArray(commissions)) {
+      console.error('获取委托API返回非数组数据:', commissions);
+      return []; // 返回空数组而不是报错
+    }
     
     // 存储所有消息
     let allMessages = [];
@@ -869,26 +914,27 @@ async function getAllUserMessages() {
     // 获取当前设备ID
     const deviceId = await window.api.getDeviceId();
     
-    // 遍历每个委托，获取其中用户发布的消息
+    // 遍历所有委托
     for (const commission of commissions) {
       try {
+        // 获取委托的消息
         const messages = await window.api.getMessages(commission.id);
         
-        // 只添加由当前设备发送的消息
-        const userMessages = messages.filter(msg => msg.deviceId === deviceId);
-        
-        allMessages = allMessages.concat(userMessages);
+        if (Array.isArray(messages)) {
+          // 找出当前用户发布的消息
+          const userMessages = messages.filter(msg => msg.deviceId === deviceId);
+          allMessages = allMessages.concat(userMessages);
+        }
       } catch (error) {
-        console.error(`获取委托 ${commission.id} 的消息失败:`, error);
-        // 继续处理其他委托
+        console.error(`获取委托(${commission.id})消息失败:`, error);
+        // 继续处理下一个委托，不中断流程
       }
     }
     
-    console.log(`获取到${allMessages.length}条用户评论，设备ID: ${deviceId}`);
     return allMessages;
   } catch (error) {
     console.error('获取所有评论失败:', error);
-    return [];
+    return []; // 出错时返回空数组
   }
 }
 
@@ -2599,73 +2645,70 @@ function initExpiryDatePicker() {
 
 // 初始化应用
 async function initApp() {
-  await loadSettings();
-  showTab('home');
-  addNavButtonsAnimation();
-  
-  // 初始化限制信息
-  await updateLimitsInfo();
-  
-  // 设置全屏监听
-  setupFullscreenListener();
-  
-  // 初始化截止日期选择器
-  initExpiryDatePicker();
-  
-  // 重置彩蛋会话标识
-  easterEggActivatedThisSession = false;
-  
-  // 重置颜文字模式
-  if (kaomojiMode) {
-    deactivateKaomojiMode();
-  }
-  
-  // 重置暗黑模式切换计数和锁定状态
-  darkModeSwitchCount = 0;
-  if (darkModeLockTimer) {
-    clearTimeout(darkModeLockTimer);
-  }
-  darkModeLocked = false;
-  darkModeToggle.disabled = false;
-  const toggleContainer = darkModeToggle.closest('.dark-mode-toggle-container');
-  if (toggleContainer) {
-    toggleContainer.classList.remove('disabled');
-  }
-  
-  // 重置拖拽彩蛋状态
-  dragCount = 0;
-  lastDragDirection = null;
-  dragDetectionEnabled = true;
-  dragCooldown = false;
-  // 注意：以下变量不重置，以实现同一次打开软件限制触发次数的要求
-  // dragSize5Triggered 
-  // dragSizeShrinkTriggered
-  // dragFlipTriggered
-  // dragTiredTriggered
-  
-  // 重置全屏点击计数
-  fullscreenClickCount = 0;
-  if (fullscreenClickTimer) {
-    clearTimeout(fullscreenClickTimer);
-  }
-  fullscreenClickCooldown = false;
-  
-  // 检查文言文模式状态
-  checkAndApplyClassicalChineseMode();
-  
-  // 确保联系方式列表初始化
-  if (createView.classList.contains('active')) {
-    // 如果当前在创建视图，清空并初始化联系方式列表
-    contactList.innerHTML = '';
-    createDefaultContact();
-  }
-  
-  // 添加窗口关闭事件，清理资源
-  window.addEventListener('beforeunload', function() {
-    if (kaomojiMode) {
-      deactivateKaomojiMode();
+  try {
+    console.log('应用初始化开始...');
+    
+    // 确保API正确初始化
+    if (!window.api) {
+      console.log('window.api未初始化，尝试使用ServerAPI');
+      if (window.ServerAPI) {
+        window.api = window.ServerAPI;
+        console.log('已将ServerAPI设置为window.api');
+      } else {
+        console.error('API未初始化，某些功能可能不可用');
+      }
     }
-  });
+    
+    // 检查API是否具有必要的方法
+    const requiredMethods = ['getCommissions', 'getMyCommissions', 'getMessages'];
+    const missingMethods = requiredMethods.filter(method => !window.api || typeof window.api[method] !== 'function');
+    
+    if (missingMethods.length > 0) {
+      console.error(`API缺少必要的方法: ${missingMethods.join(', ')}`);
+    }
+    
+    // 初始化各个视图
+    showTab(homeTab);
+    
+    try {
+      // 加载委托列表
+      await loadCommissions();
+    } catch (e) {
+      console.error('加载委托列表失败:', e);
+    }
+    
+    try {
+      // 更新使用限制信息
+      await updateLimitsInfo();
+    } catch (e) {
+      console.error('更新使用限制信息失败:', e);
+    }
+    
+    // 设置窗口控制
+    setupWindowControls();
+    
+    // 添加窗口切换监听
+    window.addEventListener('resize', handleWindowResize);
+    
+    // 添加导航按钮动画
+    addNavButtonsAnimation();
+    
+    // 添加拖拽彩蛋监听
+    setupDragDetection();
+    
+    // 添加全屏点击彩蛋监听
+    setupFullscreenListener();
+    
+    // 查找并附加到系统按钮
+    findAndAttachToSystemButtons();
+    
+    // 初始化日期选择器
+    initExpiryDatePicker();
+    
+    console.log('应用初始化完成');
+  } catch (error) {
+    console.error('应用初始化失败:', error);
+  }
 }
 
 // 设置全屏监听
@@ -5698,4 +5741,129 @@ async function deleteUserMessage(commissionId, messageId) {
     showCustomAlert(`删除消息失败: ${error.message || '未知错误'}`, '错误');
   }
 }
+
+// 自动更新功能处理
+function setupAutoUpdater() {
+  const updateNotification = document.getElementById('update-notification');
+  const updateMessage = document.getElementById('update-message');
+  const updateProgressContainer = document.getElementById('update-progress-container');
+  const updateProgressBar = document.getElementById('update-progress-bar');
+  const updateProgressText = document.getElementById('update-progress-text');
+  const updateNowButton = document.getElementById('update-now');
+  const updateLaterButton = document.getElementById('update-later');
+  const updateCloseButton = document.getElementById('update-close');
+  
+  let hasUpdate = false;
+  
+  // 监听更新状态
+  window.api.onUpdateStatus((status) => {
+    console.log('更新状态:', status);
+    
+    switch(status.status) {
+      case 'checking':
+        // 正在检查更新，不显示任何内容
+        break;
+        
+      case 'available':
+        // 发现新版本
+        hasUpdate = true;
+        updateMessage.textContent = `发现新版本 ${status.version}`;
+        updateNotification.style.display = 'block';
+        updateProgressContainer.style.display = 'none';
+        break;
+        
+      case 'not-available':
+        // 当前已是最新版本
+        hasUpdate = false;
+        break;
+        
+      case 'downloading':
+        // 正在下载更新
+        hasUpdate = true;
+        updateMessage.textContent = '正在下载更新...';
+        updateNotification.style.display = 'block';
+        updateProgressContainer.style.display = 'block';
+        
+        // 更新进度条
+        const percent = Math.round(status.progress.percent);
+        updateProgressBar.style.width = `${percent}%`;
+        updateProgressText.textContent = `${percent}%`;
+        break;
+        
+      case 'downloaded':
+        // 更新已下载完成
+        hasUpdate = true;
+        updateMessage.textContent = `更新已准备完成，点击"立即更新"重启应用`;
+        updateNotification.style.display = 'block';
+        updateProgressContainer.style.display = 'none';
+        break;
+        
+      case 'error':
+        // 更新出错
+        hasUpdate = false;
+        showError(`更新失败: ${status.error}`);
+        updateNotification.style.display = 'none';
+        break;
+    }
+  });
+  
+  // 立即更新按钮
+  updateNowButton.addEventListener('click', () => {
+    if (hasUpdate) {
+      window.api.installUpdate()
+        .catch(err => showError(`安装更新失败: ${err.message}`));
+    } else {
+      updateNotification.style.display = 'none';
+    }
+  });
+  
+  // 稍后更新按钮
+  updateLaterButton.addEventListener('click', () => {
+    updateNotification.style.display = 'none';
+  });
+  
+  // 关闭通知按钮
+  updateCloseButton.addEventListener('click', () => {
+    updateNotification.style.display = 'none';
+  });
+  
+  // 在应用启动10秒后检查更新
+  setTimeout(() => {
+    window.api.checkForUpdates()
+      .catch(err => console.error('检查更新失败:', err));
+  }, 10000);
+}
+
+// 初始化错误提示功能
+function setupErrorBanner() {
+  const errorBanner = document.getElementById('error-banner');
+  const errorMessage = document.getElementById('error-message');
+  const errorClose = document.getElementById('error-close');
+  
+  errorClose.addEventListener('click', () => {
+    errorBanner.style.display = 'none';
+  });
+  
+  // 添加全局错误显示函数
+  window.showError = function(message) {
+    errorMessage.textContent = message;
+    errorBanner.style.display = 'block';
+    
+    // 5秒后自动关闭
+    setTimeout(() => {
+      errorBanner.style.display = 'none';
+    }, 5000);
+  };
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+  // 设置自动更新功能
+  setupAutoUpdater();
+  
+  // 设置错误提示功能
+  setupErrorBanner();
+  
+  // 其他初始化...
+});
       

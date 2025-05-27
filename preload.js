@@ -71,6 +71,17 @@ contextBridge.exposeInMainWorld('api', {
     };
   },
   
+  // 自动更新相关
+  checkForUpdates: () => safeIpcCall('check-for-updates'),
+  installUpdate: () => safeIpcCall('install-update'),
+  onUpdateStatus: (callback) => {
+    const listener = (_, status) => callback(status);
+    ipcRenderer.on('update-status', listener);
+    return () => {
+      ipcRenderer.removeListener('update-status', listener);
+    };
+  },
+  
   // 检查委托限制
   checkCommissionLimit: () => safeIpcCall('check-commission-limit'),
   
