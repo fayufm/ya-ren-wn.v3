@@ -1,7 +1,7 @@
 {
   "name": "yaren-app-portable",
   "productName": "牙人",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "牙人委托发布与查看应用（便携版）",
   "main": "main-compat.js",
   "scripts": {
