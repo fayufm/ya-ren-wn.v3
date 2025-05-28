@@ -1,7 +1,7 @@
 {
   "name": "yaren",
   "productName": "牙人",
-  "version": "0.0.1",
+  "version": "1.2.0",
   "description": "牙人委托发布与查看应用（便携版）",
   "main": "main-compat.js",
   "scripts": {
