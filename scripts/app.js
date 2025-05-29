@@ -544,9 +544,26 @@ let currentLoadingOperation = null;
 let isLoadingCommissions = false;
 let isLoadingMyCommissions = false;
 let isLoadingMyMessages = false;
+let abortControllers = {
+  commissions: null,
+  myCommissions: null,
+  myMessages: null
+};
 
-// 修改showTab函数，添加防抖机制
+// 改进showTab函数，添加请求取消机制
 function showTab(tab) {
+  // 取消所有正在进行的请求
+  Object.values(abortControllers).forEach(controller => {
+    if (controller) {
+      controller.abort();
+    }
+  });
+  
+  // 重置所有加载状态
+  isLoadingCommissions = false;
+  isLoadingMyCommissions = false;
+  isLoadingMyMessages = false;
+  
   // 隐藏所有视图
   homeView.classList.remove('active');
   myView.classList.remove('active');
@@ -563,37 +580,28 @@ function showTab(tab) {
     homeTab.classList.add('active');
     homeView.classList.add('active');
     
-    // 使用防抖加载委托列表
-    if (!isLoadingCommissions) {
-      isLoadingCommissions = true;
-      setTimeout(() => {
-        loadCommissions().finally(() => {
-          isLoadingCommissions = false;
-        });
-      }, 100);
-    }
+    // 延迟加载委托列表，避免频繁切换导致的问题
+    setTimeout(() => {
+      if (homeView.classList.contains('active')) {
+        loadCommissions();
+      }
+    }, 200);
   } else if (tab === myTab) {
     myTab.classList.add('active');
     myView.classList.add('active');
     
-    // 使用防抖加载我的委托和消息
-    if (!isLoadingMyCommissions && myCommissions) {
-      isLoadingMyCommissions = true;
-      setTimeout(() => {
-        loadMyCommissions().finally(() => {
-          isLoadingMyCommissions = false;
-        });
-      }, 100);
-    }
+    // 延迟加载我的委托和消息，避免频繁切换导致的问题
+    setTimeout(() => {
+      if (myView.classList.contains('active') && myCommissions) {
+        loadMyCommissions();
+      }
+    }, 200);
     
-    if (!isLoadingMyMessages && myMessages) {
-      isLoadingMyMessages = true;
-      setTimeout(() => {
-        loadMyMessages().finally(() => {
-          isLoadingMyMessages = false;
-        });
-      }, 200); // 稍微延迟加载消息，避免同时发出太多请求
-    }
+    setTimeout(() => {
+      if (myView.classList.contains('active') && myMessages) {
+        loadMyMessages();
+      }
+    }, 400); // 稍微延迟加载消息，避免同时发出太多请求
     
     // 标记所有通知为已读
     if (window.NotificationSystem) {
@@ -720,8 +728,22 @@ function handleAddContact() {
   createDefaultContact();
 }
 
-// 修改loadCommissions函数，添加请求控制
+// 修改loadCommissions函数，添加请求取消功能
 async function loadCommissions() {
+  // 如果已经在加载中，则取消之前的请求
+  if (isLoadingCommissions) {
+    if (abortControllers.commissions) {
+      abortControllers.commissions.abort();
+    }
+  }
+  
+  // 创建新的AbortController
+  abortControllers.commissions = new AbortController();
+  const signal = abortControllers.commissions.signal;
+  
+  // 设置加载状态
+  isLoadingCommissions = true;
+  
   try {
     // 检查API是否正确初始化
     if (!window.api || !window.api.getCommissions) {
@@ -733,8 +755,18 @@ async function loadCommissions() {
       }
     }
     
+    // 显示加载中状态
+    commissionsList.innerHTML = '<div class="loading-indicator"><div class="spinner"></div><div class="loading-text">加载中...</div></div>';
+    
     console.log('正在加载委托列表...');
     const commissions = await window.api.getCommissions();
+    
+    // 如果请求已被取消，则不继续处理
+    if (signal.aborted) {
+      console.log('委托列表请求已被取消');
+      return;
+    }
+    
     console.log('获取委托返回:', commissions);
     
     // 确保返回的是数组
@@ -758,12 +790,21 @@ async function loadCommissions() {
       renderCommissionsList(filteredCommissions, commissionsList);
     }
   } catch (error) {
+    // 如果请求已被取消，则不显示错误
+    if (error.name === 'AbortError') {
+      console.log('委托列表请求已被取消');
+      return;
+    }
+    
     console.error('加载委托失败:', error);
     // 确保渲染空列表而不是报错
     if (homeView.classList.contains('active')) {
       renderCommissionsList([], commissionsList);
       showCustomAlert('加载委托列表失败，请尝试刷新页面', '网络错误');
     }
+  } finally {
+    // 无论成功还是失败，都重置加载状态
+    isLoadingCommissions = false;
   }
 }
 
@@ -776,15 +817,38 @@ function filterCommissionsByLocation(commissions, location) {
   return commissions.filter(commission => commission.city === location);
 }
 
-// 修改loadMyCommissions函数，添加请求控制
+// 修改loadMyCommissions函数，添加请求取消功能
 async function loadMyCommissions() {
   if (!myCommissions) {
     console.error('myCommissions元素不存在');
     return;
   }
+  
+  // 如果已经在加载中，则取消之前的请求
+  if (isLoadingMyCommissions) {
+    if (abortControllers.myCommissions) {
+      abortControllers.myCommissions.abort();
+    }
+  }
+  
+  // 创建新的AbortController
+  abortControllers.myCommissions = new AbortController();
+  const signal = abortControllers.myCommissions.signal;
+  
+  // 设置加载状态
+  isLoadingMyCommissions = true;
+  
+  // 显示加载中状态
+  myCommissions.innerHTML = '<div class="loading-indicator"><div class="spinner"></div><div class="loading-text">加载中...</div></div>';
 
   try {
     const commissions = await window.api.getMyCommissions();
+    
+    // 如果请求已被取消，则不继续处理
+    if (signal.aborted) {
+      console.log('我的委托请求已被取消');
+      return;
+    }
     
     // 根据当前选择的地区筛选
     const filteredCommissions = filterCommissionsByLocation(commissions, currentLocation);
@@ -792,14 +856,25 @@ async function loadMyCommissions() {
     // 只有当myView是活动状态时才更新UI
     if (myView.classList.contains('active')) {
       renderCommissionsList(filteredCommissions, myCommissions);
+      
       // 更新使用限制信息
       await updateLimitsInfo();
     }
   } catch (error) {
+    // 如果请求已被取消，则不显示错误
+    if (error.name === 'AbortError') {
+      console.log('我的委托请求已被取消');
+      return;
+    }
+    
     console.error('加载我的委托失败:', error);
     if (myView.classList.contains('active')) {
+      myCommissions.innerHTML = '<div class="empty-message">加载失败，请重试</div>';
       showCustomAlert('加载个人委托列表失败，请尝试刷新页面', '网络错误');
     }
+  } finally {
+    // 无论成功还是失败，都重置加载状态
+    isLoadingMyCommissions = false;
   }
 }
 
@@ -1004,24 +1079,45 @@ async function getAllUserMessages() {
   }
 }
 
-// 修改loadMyMessages函数，添加请求控制
+// 修改loadMyMessages函数，添加请求取消功能
 async function loadMyMessages() {
   if (!myMessages) {
     console.error('myMessages元素不存在');
     return;
   }
+  
+  // 如果已经在加载中，则取消之前的请求
+  if (isLoadingMyMessages) {
+    if (abortControllers.myMessages) {
+      abortControllers.myMessages.abort();
+    }
+  }
+  
+  // 创建新的AbortController
+  abortControllers.myMessages = new AbortController();
+  const signal = abortControllers.myMessages.signal;
+  
+  // 设置加载状态
+  isLoadingMyMessages = true;
 
-  // 清空消息容器
-  myMessages.innerHTML = '';
+  // 清空消息容器并显示加载中状态
+  myMessages.innerHTML = '<div class="loading-indicator"><div class="spinner"></div><div class="loading-text">加载中...</div></div>';
   
   try {
     console.log('开始加载我的消息记录...');
     const commissions = await window.api.getMyCommissions();
+    
+    // 如果请求已被取消，则不继续处理
+    if (signal.aborted) {
+      console.log('我的消息请求已被取消');
+      return;
+    }
+    
     console.log(`获取到${commissions.length}个委托`);
     
     // 如果用户已经切换到其他页面，不继续加载
-    if (!myView.classList.contains('active')) {
-      console.log('用户已切换页面，取消加载消息');
+    if (!myView.classList.contains('active') || signal.aborted) {
+      console.log('用户已切换页面或请求被取消，取消加载消息');
       return;
     }
     
@@ -1032,13 +1128,19 @@ async function loadMyMessages() {
     // 对于每个委托，获取其消息
     for (const commission of commissions) {
       try {
+        // 如果请求已被取消，则不继续处理
+        if (signal.aborted) {
+          console.log('我的消息请求已被取消');
+          return;
+        }
+        
         console.log(`加载委托 ${commission.id} 的消息`);
         const messages = await window.api.getMessages(commission.id);
         console.log(`委托 ${commission.id} 的消息数量: ${messages.length}`);
         
         // 如果用户已经切换到其他页面，不继续加载
-        if (!myView.classList.contains('active')) {
-          console.log('用户已切换页面，取消加载消息');
+        if (!myView.classList.contains('active') || signal.aborted) {
+          console.log('用户已切换页面或请求被取消，取消加载消息');
           return;
         }
         
@@ -1101,7 +1203,8 @@ async function loadMyMessages() {
     }
     
     // 只有当myView是活动状态时才更新UI
-    if (myView.classList.contains('active')) {
+    if (myView.classList.contains('active') && !signal.aborted) {
+      myMessages.innerHTML = '';
       myMessages.appendChild(messagesContainer);
       
       // 如果没有消息，显示提示
@@ -1113,10 +1216,20 @@ async function loadMyMessages() {
       }
     }
   } catch (error) {
+    // 如果请求已被取消，则不显示错误
+    if (error.name === 'AbortError') {
+      console.log('我的消息请求已被取消');
+      return;
+    }
+    
     console.error('加载消息记录失败:', error);
     if (myView.classList.contains('active')) {
+      myMessages.innerHTML = '<div class="empty-message">加载失败，请重试</div>';
       showCustomAlert('加载消息记录失败，请尝试刷新页面', '网络错误');
     }
+  } finally {
+    // 无论成功还是失败，都重置加载状态
+    isLoadingMyMessages = false;
   }
 }
 
@@ -1286,6 +1399,13 @@ function backToList() {
   
   // 重置当前委托ID
   appCurrentCommissionId = null;
+  
+  // 取消所有正在进行的请求
+  Object.values(abortControllers).forEach(controller => {
+    if (controller) {
+      controller.abort();
+    }
+  });
   
   // 重置API状态标志
   isLoadingCommissions = false;
@@ -2808,6 +2928,9 @@ async function initApp() {
   try {
     console.log('初始化应用程序...');
     console.log(`应用版本: ${APP_VERSION}`);
+    
+    // 添加加载指示器样式
+    addLoadingIndicatorStyles();
     
     // 确保API正确初始化
     if (!window.api) {
@@ -6459,4 +6582,45 @@ document.addEventListener('keydown', function(e) {
     }
   }
 });
+
+// 添加加载指示器样式
+function addLoadingIndicatorStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .loading-indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      text-align: center;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-left-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 15px;
+    }
+    
+    .loading-text {
+      color: var(--text-color);
+      font-size: 14px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    body.dark-mode .spinner {
+      border-color: rgba(255, 255, 255, 0.1);
+      border-left-color: var(--primary-color);
+    }
+  `;
+  document.head.appendChild(style);
+}
       
