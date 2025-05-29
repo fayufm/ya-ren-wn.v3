@@ -1622,44 +1622,60 @@ async function compressImage(file) {
       const img = new Image();
       img.src = event.target.result;
       img.onload = function() {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        
-        // 计算压缩后的尺寸
-        const maxSize = 1200; // 最大尺寸
-        if (width > height && width > maxSize) {
-          height = Math.round((height * maxSize) / width);
-          width = maxSize;
-        } else if (height > maxSize) {
-          width = Math.round((width * maxSize) / height);
-          height = maxSize;
+        try {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // 计算压缩后的尺寸
+          const maxSize = 1200; // 最大尺寸
+          if (width > height && width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          } else if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // 压缩图片质量
+          const quality = 0.8; // 压缩质量
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          
+          // 直接将Data URL转换为Blob，不使用fetch API
+          const byteString = atob(compressedDataUrl.split(',')[1]);
+          const mimeType = compressedDataUrl.split(',')[0].split(':')[1].split(';')[0];
+          const ab = new ArrayBuffer(byteString.length);
+          const ia = new Uint8Array(ab);
+          
+          for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+          }
+          
+          const blob = new Blob([ab], { type: mimeType });
+          resolve(new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now()
+          }));
+        } catch (error) {
+          console.error('Canvas处理图片失败:', error);
+          reject(error);
         }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // 压缩图片质量
-        const quality = 0.8; // 压缩质量
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-        
-        // 转换为Blob
-        fetch(compressedDataUrl)
-          .then(res => res.blob())
-          .then(blob => {
-            resolve(new File([blob], file.name, {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            }));
-          })
-          .catch(reject);
       };
-      img.onerror = reject;
+      img.onerror = function(error) {
+        console.error('图片加载失败:', error);
+        reject(error);
+      };
     };
-    reader.onerror = reject;
+    reader.onerror = function(error) {
+      console.error('文件读取失败:', error);
+      reject(error);
+    };
   });
 }
 
@@ -1682,22 +1698,38 @@ async function handleImageUpload(event) {
   
   try {
     // 显示压缩中提示
-    const loadingToast = showToast('正在压缩图片...');
+    showToast('正在压缩图片...');
+    console.log('开始压缩图片:', file.name, '大小:', file.size, '类型:', file.type);
     
     // 压缩图片
     const compressedFile = await compressImage(file);
+    console.log('图片压缩成功:', compressedFile.name, '压缩后大小:', compressedFile.size);
     
     // 读取压缩后的图片
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    currentImageData = e.target.result;
-    updateImagePreview();
-      showToast('图片已压缩并上传');
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        currentImageData = e.target.result;
+        updateImagePreview();
+        showToast('图片已压缩并上传');
+      } catch (error) {
+        console.error('预览图片失败:', error);
+        showCustomAlert('预览图片失败，请重试', '处理错误');
+      }
+    };
+    reader.onerror = function(error) {
+      console.error('读取压缩后的图片失败:', error);
+      showCustomAlert('读取图片失败，请重试', '处理错误');
     };
     reader.readAsDataURL(compressedFile);
   } catch (error) {
     console.error('图片压缩失败:', error);
-    showCustomAlert('图片压缩失败，请重试', '处理错误');
+    // 提供更具体的错误信息
+    let errorMessage = '图片压缩失败，请重试';
+    if (error.message) {
+      errorMessage += `\n错误详情: ${error.message}`;
+    }
+    showCustomAlert(errorMessage, '处理错误');
   }
 }
 
