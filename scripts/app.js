@@ -539,7 +539,13 @@ function createPlane(container, direction) {
   }, duration * 1000 + 100);
 }
 
-// 显示特定标签页
+// 添加请求控制变量
+let currentLoadingOperation = null;
+let isLoadingCommissions = false;
+let isLoadingMyCommissions = false;
+let isLoadingMyMessages = false;
+
+// 修改showTab函数，添加防抖机制
 function showTab(tab) {
   // 隐藏所有视图
   homeView.classList.remove('active');
@@ -556,12 +562,38 @@ function showTab(tab) {
   if (tab === homeTab) {
     homeTab.classList.add('active');
     homeView.classList.add('active');
-    loadCommissions(); // 刷新委托列表
+    
+    // 使用防抖加载委托列表
+    if (!isLoadingCommissions) {
+      isLoadingCommissions = true;
+      setTimeout(() => {
+        loadCommissions().finally(() => {
+          isLoadingCommissions = false;
+        });
+      }, 100);
+    }
   } else if (tab === myTab) {
     myTab.classList.add('active');
     myView.classList.add('active');
-    if (myCommissions) loadMyCommissions(); // 加载我的委托
-    if (myMessages) loadMyMessages(); // 加载我的消息
+    
+    // 使用防抖加载我的委托和消息
+    if (!isLoadingMyCommissions && myCommissions) {
+      isLoadingMyCommissions = true;
+      setTimeout(() => {
+        loadMyCommissions().finally(() => {
+          isLoadingMyCommissions = false;
+        });
+      }, 100);
+    }
+    
+    if (!isLoadingMyMessages && myMessages) {
+      isLoadingMyMessages = true;
+      setTimeout(() => {
+        loadMyMessages().finally(() => {
+          isLoadingMyMessages = false;
+        });
+      }, 200); // 稍微延迟加载消息，避免同时发出太多请求
+    }
     
     // 标记所有通知为已读
     if (window.NotificationSystem) {
@@ -688,7 +720,7 @@ function handleAddContact() {
   createDefaultContact();
 }
 
-// 加载所有委托
+// 修改loadCommissions函数，添加请求控制
 async function loadCommissions() {
   try {
     // 检查API是否正确初始化
@@ -721,12 +753,17 @@ async function loadCommissions() {
     // 根据当前选择的地区筛选
     const filteredCommissions = filterCommissionsByLocation(commissions, currentLocation);
     
-    renderCommissionsList(filteredCommissions, commissionsList);
+    // 只有当homeView是活动状态时才更新UI
+    if (homeView.classList.contains('active')) {
+      renderCommissionsList(filteredCommissions, commissionsList);
+    }
   } catch (error) {
     console.error('加载委托失败:', error);
     // 确保渲染空列表而不是报错
-    renderCommissionsList([], commissionsList);
-    showCustomAlert('加载委托列表失败，请尝试刷新页面', '网络错误');
+    if (homeView.classList.contains('active')) {
+      renderCommissionsList([], commissionsList);
+      showCustomAlert('加载委托列表失败，请尝试刷新页面', '网络错误');
+    }
   }
 }
 
@@ -739,7 +776,7 @@ function filterCommissionsByLocation(commissions, location) {
   return commissions.filter(commission => commission.city === location);
 }
 
-// 加载我的委托
+// 修改loadMyCommissions函数，添加请求控制
 async function loadMyCommissions() {
   if (!myCommissions) {
     console.error('myCommissions元素不存在');
@@ -752,13 +789,17 @@ async function loadMyCommissions() {
     // 根据当前选择的地区筛选
     const filteredCommissions = filterCommissionsByLocation(commissions, currentLocation);
     
-    renderCommissionsList(filteredCommissions, myCommissions);
-    
-    // 更新使用限制信息
-    await updateLimitsInfo();
+    // 只有当myView是活动状态时才更新UI
+    if (myView.classList.contains('active')) {
+      renderCommissionsList(filteredCommissions, myCommissions);
+      // 更新使用限制信息
+      await updateLimitsInfo();
+    }
   } catch (error) {
     console.error('加载我的委托失败:', error);
-    showCustomAlert('加载个人委托列表失败，请尝试刷新页面', '网络错误');
+    if (myView.classList.contains('active')) {
+      showCustomAlert('加载个人委托列表失败，请尝试刷新页面', '网络错误');
+    }
   }
 }
 
@@ -963,19 +1004,26 @@ async function getAllUserMessages() {
   }
 }
 
-// 加载我的消息记录
+// 修改loadMyMessages函数，添加请求控制
 async function loadMyMessages() {
   if (!myMessages) {
     console.error('myMessages元素不存在');
     return;
   }
 
+  // 清空消息容器
   myMessages.innerHTML = '';
   
   try {
     console.log('开始加载我的消息记录...');
     const commissions = await window.api.getMyCommissions();
     console.log(`获取到${commissions.length}个委托`);
+    
+    // 如果用户已经切换到其他页面，不继续加载
+    if (!myView.classList.contains('active')) {
+      console.log('用户已切换页面，取消加载消息');
+      return;
+    }
     
     // 创建消息记录容器
     const messagesContainer = document.createElement('div');
@@ -987,6 +1035,12 @@ async function loadMyMessages() {
         console.log(`加载委托 ${commission.id} 的消息`);
         const messages = await window.api.getMessages(commission.id);
         console.log(`委托 ${commission.id} 的消息数量: ${messages.length}`);
+        
+        // 如果用户已经切换到其他页面，不继续加载
+        if (!myView.classList.contains('active')) {
+          console.log('用户已切换页面，取消加载消息');
+          return;
+        }
         
         if (messages && messages.length > 0) {
           // 创建委托消息组
@@ -1046,18 +1100,23 @@ async function loadMyMessages() {
       }
     }
     
-    myMessages.appendChild(messagesContainer);
-    
-    // 如果没有消息，显示提示
-    if (messagesContainer.children.length === 0) {
-      const emptyMessage = document.createElement('div');
-      emptyMessage.className = 'empty-message';
-      emptyMessage.textContent = '暂无消息记录';
-      myMessages.appendChild(emptyMessage);
+    // 只有当myView是活动状态时才更新UI
+    if (myView.classList.contains('active')) {
+      myMessages.appendChild(messagesContainer);
+      
+      // 如果没有消息，显示提示
+      if (messagesContainer.children.length === 0) {
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'empty-message';
+        emptyMessage.textContent = '暂无消息记录';
+        myMessages.appendChild(emptyMessage);
+      }
     }
   } catch (error) {
     console.error('加载消息记录失败:', error);
-    showCustomAlert('加载消息记录失败，请尝试刷新页面', '网络错误');
+    if (myView.classList.contains('active')) {
+      showCustomAlert('加载消息记录失败，请尝试刷新页面', '网络错误');
+    }
   }
 }
 
