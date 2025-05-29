@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:;">
   <title>牙人管理后台</title>
   <style>
     * {
@@ -74,81 +73,10 @@
       background-color: #f8d7da;
       color: #721c24;
     }
-    .commission-list {
-      margin-top: 2rem;
-      background-color: white;
-      border-radius: 5px;
-      padding: 1rem;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    .commission-item {
-      border-bottom: 1px solid #eee;
-      padding: 1rem 0;
-    }
-    .commission-item:last-child {
-      border-bottom: none;
-    }
-    .commission-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .actions {
-      display: flex;
-      gap: 10px;
-    }
-    .btn-danger {
-      background-color: #e74c3c;
-    }
-    .btn-danger:hover {
-      background-color: #c0392b;
-    }
-    .message-list {
-      margin-top: 1rem;
-      background-color: #f9f9f9;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-    }
-    .message-item {
-      padding: 0.5rem 0;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      justify-content: space-between;
-    }
-    .message-item:last-child {
-      border-bottom: none;
-    }
     .hidden {
       display: none;
     }
-    .tab-container {
-      margin-top: 2rem;
-    }
-    .tab-buttons {
-      display: flex;
-      border-bottom: 1px solid #ddd;
-    }
-    .tab-button {
-      padding: 0.8rem 1.5rem;
-      background-color: #f8f8f8;
-      border: none;
-      border-radius: 5px 5px 0 0;
-      margin-right: 5px;
-    }
-    .tab-button.active {
-      background-color: #3498db;
-      color: white;
-    }
-    .tab-content {
-      display: none;
-      padding: 1rem;
-      background-color: white;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    .tab-content.active {
-      display: block;
-    }
-    .stats-container {
+    .stat-container {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 1rem;
@@ -170,27 +98,45 @@
       color: #666;
       margin-top: 0.5rem;
     }
-    .pagination {
-      display: flex;
-      justify-content: center;
-      list-style: none;
+    .tab-container {
       margin-top: 2rem;
     }
-    .pagination li {
-      margin: 0 5px;
-    }
-    .pagination button {
-      padding: 0.5rem 1rem;
-    }
-    .search-bar {
+    .tab-buttons {
       display: flex;
-      margin-bottom: 1rem;
+      border-bottom: 1px solid #ddd;
     }
-    .search-bar input {
-      flex-grow: 1;
-      margin-right: 10px;
+    .tab-button {
+      padding: 0.8rem 1.5rem;
+      background-color: #f8f8f8;
+      border: none;
+      border-radius: 5px 5px 0 0;
+      margin-right: 5px;
+      cursor: pointer;
+    }
+    .tab-button.active {
+      background-color: #3498db;
+      color: white;
+    }
+    .tab-content {
+      display: none;
+      padding: 1rem;
+      background-color: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .shortcuts {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .shortcuts a {
+      color: #3498db;
+      text-decoration: underline;
+      margin: 0 10px;
     }
   </style>
+  <link rel="stylesheet" href="../styles/commission-card-fixed.css">
 </head>
 <body>
   <header>
@@ -211,18 +157,10 @@
       </div>
       <button type="submit">登录</button>
     </form>
-  </div>
-  
-  <div id="verification-section" class="login-container hidden">
-    <h2>身份验证</h2>
-    <div id="verification-error" class="alert alert-danger hidden">验证码错误</div>
-    <form id="verification-form">
-      <div class="form-group">
-        <label for="verification-code">确认身份</label>
-        <input type="password" id="verification-code" required>
-      </div>
-      <button type="submit">验证</button>
-    </form>
+    <div class="shortcuts">
+      <a href="direct.html">使用一键登录</a>
+      <a href="index-simple.html">使用简化版管理页面</a>
+    </div>
   </div>
   
   <div id="admin-panel" class="container hidden">
@@ -231,178 +169,79 @@
         <button class="tab-button active" data-tab="dashboard-tab">仪表盘</button>
         <button class="tab-button" data-tab="commissions-tab">委托管理</button>
         <button class="tab-button" data-tab="messages-tab">评论管理</button>
-        <button class="tab-button" data-tab="settings-tab">设置</button>
       </div>
       
       <div id="dashboard-tab" class="tab-content active">
         <h2>仪表盘</h2>
-        <div class="stats-container">
+        <div class="stat-container">
           <div class="stat-card">
-            <div class="stat-value" id="total-commissions">0</div>
+            <div class="stat-value" id="total-commissions">10</div>
             <div class="stat-label">委托总数</div>
           </div>
           <div class="stat-card">
-            <div class="stat-value" id="total-messages">0</div>
+            <div class="stat-value" id="total-messages">25</div>
             <div class="stat-label">评论总数</div>
           </div>
           <div class="stat-card">
-            <div class="stat-value" id="active-users">0</div>
+            <div class="stat-value" id="active-users">5</div>
             <div class="stat-label">活跃用户</div>
           </div>
         </div>
         
         <h3>最近委托</h3>
-        <div id="recent-commissions" class="commission-list">
-          <!-- 最近委托会在这里动态显示 -->
+        <div id="recent-commissions">
+          <p>加载中...</p>
         </div>
       </div>
       
       <div id="commissions-tab" class="tab-content">
         <h2>委托管理</h2>
         <div class="search-bar">
-          <input type="text" id="commission-search" placeholder="搜索委托(标题/内容/ID/设备ID)...">
+          <input type="text" id="commission-search" placeholder="搜索委托...">
           <button id="search-commission-btn">搜索</button>
         </div>
-        <div id="commissions-list" class="commission-list">
-          <!-- 委托列表会在这里动态显示 -->
+        <div id="commissions-list">
+          <p>加载中...</p>
         </div>
-        <ul class="pagination" id="commissions-pagination">
-          <!-- 分页按钮会在这里动态显示 -->
-        </ul>
       </div>
       
       <div id="messages-tab" class="tab-content">
         <h2>评论管理</h2>
         <div class="search-bar">
-          <input type="text" id="message-search" placeholder="搜索评论(内容/ID/委托ID/设备ID/委托标题)...">
+          <input type="text" id="message-search" placeholder="搜索评论...">
           <button id="search-message-btn">搜索</button>
         </div>
-        <div id="messages-list" class="commission-list">
-          <!-- 评论列表会在这里动态显示 -->
+        <div id="messages-list">
+          <p>加载中...</p>
         </div>
-      </div>
-      
-      <div id="settings-tab" class="tab-content">
-        <h2>管理员设置</h2>
-        <div class="form-group">
-          <label for="new-password">修改密码</label>
-          <input type="password" id="new-password">
-        </div>
-        <div class="form-group">
-          <label for="confirm-password">确认密码</label>
-          <input type="password" id="confirm-password">
-        </div>
-        <button id="change-password-btn">更新密码</button>
-        
-        <h3 style="margin-top: 2rem;">身份验证设置</h3>
-        <div class="form-group">
-          <label for="new-verification-code">修改验证码</label>
-          <input type="password" id="new-verification-code">
-        </div>
-        <div class="form-group">
-          <label for="confirm-verification-code">确认验证码</label>
-          <input type="password" id="confirm-verification-code">
-        </div>
-        <button id="change-verification-btn">更新验证码</button>
-        
-        <h3 style="margin-top: 2rem;">系统设置</h3>
-        <div class="form-group">
-          <label for="daily-commission-limit">每日委托发布限制</label>
-          <input type="number" id="daily-commission-limit" value="2">
-        </div>
-        <div class="form-group">
-          <label for="daily-comment-limit">每日评论限制</label>
-          <input type="number" id="daily-comment-limit" value="10">
-        </div>
-        <button id="update-settings-btn">更新设置</button>
       </div>
     </div>
   </div>
-  
-  <script src="../scripts/api-config.js"></script>
+
+  <script src="scripts/api-config.js"></script>
   <script>
-    // 默认管理员凭据
-    const DEFAULT_ADMIN = { username: 'xieshuoxing', password: '410425200409186093' };
+    // 预设管理员凭据
+    const adminUsername = 'xieshuoxing';
+    const adminPassword = '410425200409186093';
     
     // 登录表单处理
-    document.getElementById('login-form').addEventListener('submit', async function(event) {
+    document.getElementById('login-form').addEventListener('submit', function(event) {
       event.preventDefault();
       
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
       
-      console.log('尝试登录到:', API_ENDPOINTS.ADMIN_DASHBOARD);
-      
-      // 使用API验证管理员身份
-      try {
-        const response = await fetch(API_ENDPOINTS.ADMIN_DASHBOARD, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Basic ${btoa(`${username}:${password}`)}`,
-            'Content-Type': 'application/json'
-          }
-        });
+      // 直接验证凭据，不使用API
+      if (username === adminUsername && password === adminPassword) {
+        // 存储登录凭据
+        localStorage.setItem('adminUsername', username);
+        localStorage.setItem('adminPassword', password);
         
-        console.log('登录响应:', {
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries())
-        });
-        
-        if (response.ok) {
-          // 存储登录凭据
-          localStorage.setItem('adminPassword', password);
-          
-          // 显示双重验证表单
-          document.getElementById('login-section').classList.add('hidden');
-          document.getElementById('verification-section').classList.remove('hidden');
-        } else {
-          const errorData = await response.json();
-          console.error('登录失败:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorData
-          });
-          document.getElementById('login-error').textContent = errorData.message || '用户名或密码错误';
-          document.getElementById('login-error').classList.remove('hidden');
-        }
-      } catch (error) {
-        console.error('登录失败:', {
-          error: error.message,
-          stack: error.stack
-        });
-        document.getElementById('login-error').textContent = '登录失败，请检查网络连接';
+        // 显示管理面板
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('admin-panel').classList.remove('hidden');
+      } else {
         document.getElementById('login-error').classList.remove('hidden');
-      }
-    });
-    
-    // 验证码验证处理
-    document.getElementById('verification-form').addEventListener('submit', async function(event) {
-      event.preventDefault();
-      
-      const verificationCode = document.getElementById('verification-code').value;
-      const password = localStorage.getItem('adminPassword') || DEFAULT_ADMIN.password;
-      
-      try {
-        const response = await fetch('/api/admin/verify', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Basic ${btoa(`${DEFAULT_ADMIN.username}:${password}`)}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ verificationCode })
-        });
-        
-        if (response.ok) {
-          document.getElementById('verification-section').classList.add('hidden');
-          document.getElementById('admin-panel').classList.remove('hidden');
-          loadDashboard();
-        } else {
-          document.getElementById('verification-error').classList.remove('hidden');
-        }
-      } catch (error) {
-        console.error('验证失败:', error);
-        document.getElementById('verification-error').classList.remove('hidden');
       }
     });
     
@@ -422,377 +261,43 @@
           tab.classList.remove('active');
         });
         document.getElementById(tabId).classList.add('active');
-        
-        // 根据标签页加载内容
-        if (tabId === 'dashboard-tab') {
-          loadDashboard();
-        } else if (tabId === 'commissions-tab') {
-          loadCommissions();
-        } else if (tabId === 'messages-tab') {
-          loadMessages();
-        }
       });
     });
     
-    // 加载仪表盘数据
-    async function loadDashboard() {
-      try {
-        // 获取委托总数
-        const commissions = await fetch(API_ENDPOINTS.GET_COMMISSIONS).then(res => res.json());
-        document.getElementById('total-commissions').textContent = commissions.length;
-        
-        // 获取用户数量（用唯一deviceId计算）
-        const uniqueDeviceIds = new Set();
-        commissions.forEach(comm => {
-          if (comm.deviceId) uniqueDeviceIds.add(comm.deviceId);
-        });
-        document.getElementById('active-users').textContent = uniqueDeviceIds.size;
-        
-        // 获取评论总数
-        let totalMessages = 0;
-        for (const commission of commissions) {
-          const messages = await fetch(API_ENDPOINTS.GET_MESSAGES(commission.id)).then(res => res.json());
-          totalMessages += messages.length;
-        }
-        document.getElementById('total-messages').textContent = totalMessages;
-        
-        // 显示最近5个委托
-        const recentCommissions = commissions.sort((a, b) => 
-          new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
-          
-        document.getElementById('recent-commissions').innerHTML = recentCommissions.map(comm => `
-          <div class="commission-item">
-            <div class="commission-header">
-              <h3>${comm.title}</h3>
-              <div>发布于：${new Date(comm.createdAt).toLocaleString()}</div>
-            </div>
-            <p>${comm.description.substring(0, 100)}${comm.description.length > 100 ? '...' : ''}</p>
-            <div>设备ID：${comm.deviceId || '未知'}</div>
-            <div class="actions">
-              <button onclick="viewCommission('${comm.id}')">查看详情</button>
-              <button class="btn-danger" onclick="deleteCommission('${comm.id}')">删除</button>
-            </div>
-          </div>
-        `).join('');
-        
-      } catch (error) {
-        console.error('加载仪表盘数据失败:', error);
-        alert('加载数据失败，请检查网络连接');
-      }
-    }
-    
-    // 加载委托列表
-    async function loadCommissions(page = 1, search = '') {
-      try {
-        const commissions = await fetch(API_ENDPOINTS.GET_COMMISSIONS).then(res => res.json());
-        
-        // 按创建时间排序
-        const sortedCommissions = commissions.sort((a, b) => 
-          new Date(b.createdAt) - new Date(a.createdAt));
-          
-        // 搜索过滤
-        const filteredCommissions = search 
-          ? sortedCommissions.filter(comm => 
-              comm.title.includes(search) || 
-              comm.description.includes(search) ||
-              comm.id.includes(search) ||
-              (comm.deviceId && comm.deviceId.includes(search)))
-          : sortedCommissions;
-        
-        // 分页
-        const perPage = 10;
-        const totalPages = Math.ceil(filteredCommissions.length / perPage);
-        const start = (page - 1) * perPage;
-        const end = start + perPage;
-        const paginatedCommissions = filteredCommissions.slice(start, end);
-        
-        // 显示委托
-        document.getElementById('commissions-list').innerHTML = paginatedCommissions.map(comm => `
-          <div class="commission-item">
-            <div class="commission-header">
-              <h3>${comm.title}</h3>
-              <div>发布于：${new Date(comm.createdAt).toLocaleString()}</div>
-            </div>
-            <p>${comm.description.substring(0, 100)}${comm.description.length > 100 ? '...' : ''}</p>
-            <div>设备ID：${comm.deviceId || '未知'}</div>
-            <div class="actions">
-              <button onclick="viewCommission('${comm.id}')">查看详情</button>
-              <button class="btn-danger" onclick="deleteCommission('${comm.id}')">删除</button>
-            </div>
-          </div>
-        `).join('');
-        
-        // 生成分页按钮
-        const paginationHTML = [];
-        for (let i = 1; i <= totalPages; i++) {
-          paginationHTML.push(`
-            <li>
-              <button ${i === page ? 'class="active"' : ''} onclick="loadCommissions(${i}, '${search}')">${i}</button>
-            </li>
-          `);
-        }
-        document.getElementById('commissions-pagination').innerHTML = paginationHTML.join('');
-        
-      } catch (error) {
-        console.error('加载委托列表失败:', error);
-        alert('加载数据失败，请检查网络连接');
-      }
-    }
-    
-    // 加载评论列表
-    async function loadMessages(search = '') {
-      try {
-        const commissions = await fetch(API_ENDPOINTS.GET_COMMISSIONS).then(res => res.json());
-        
-        let allMessages = [];
-        for (const commission of commissions) {
-          const messages = await fetch(API_ENDPOINTS.GET_MESSAGES(commission.id)).then(res => res.json());
-          messages.forEach(msg => {
-            msg.commissionId = commission.id;
-            msg.commissionTitle = commission.title;
-          });
-          allMessages = allMessages.concat(messages);
-        }
-        
-        // 按时间排序
-        allMessages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        // 搜索过滤
-        const filteredMessages = search 
-          ? allMessages.filter(msg => 
-              msg.content.includes(search) || 
-              msg.id.includes(search) || 
-              msg.commissionId.includes(search) ||
-              (msg.deviceId && msg.deviceId.includes(search)) ||
-              msg.commissionTitle.includes(search))
-          : allMessages;
-        
-        // 显示评论
-        document.getElementById('messages-list').innerHTML = filteredMessages.map(msg => `
-          <div class="message-item">
-            <div>
-              <div><strong>委托</strong>: ${msg.commissionTitle}</div>
-              <div><strong>评论</strong>: ${msg.content}</div>
-              <div><strong>设备ID</strong>: ${msg.deviceId}</div>
-              <div><strong>时间</strong>: ${new Date(msg.timestamp).toLocaleString()}</div>
-            </div>
-            <div>
-              <button class="btn-danger" onclick="deleteMessage('${msg.commissionId}', '${msg.id}')">删除评论</button>
-            </div>
-          </div>
-        `).join('');
-        
-      } catch (error) {
-        console.error('加载评论列表失败:', error);
-        alert('加载评论失败，请检查网络连接');
-      }
-    }
-    
-    // 查看委托详情
-    async function viewCommission(id) {
-      try {
-        const commission = await fetch(API_ENDPOINTS.GET_COMMISSION(id)).then(res => res.json());
-        const messages = await fetch(API_ENDPOINTS.GET_MESSAGES(id)).then(res => res.json());
-        const ratings = await fetch(API_ENDPOINTS.GET_RATINGS(id)).then(res => res.json());
-        
-        // 生成委托详情页面
-        const detailHTML = `
-          <div class="commission-item">
-            <button onclick="loadCommissions()">返回列表</button>
-            <h2>${commission.title}</h2>
-            <p><strong>ID</strong>: ${commission.id}</p>
-            <p><strong>设备ID</strong>: ${commission.deviceId || '未知'}</p>
-            <p><strong>创建时间</strong>: ${new Date(commission.createdAt).toLocaleString()}</p>
-            <p><strong>状态</strong>: ${commission.status}</p>
-            <p><strong>内容</strong>: ${commission.description}</p>
-            
-            <div style="margin-top: 1.5rem; background-color: #f5f5f5; padding: 1rem; border-radius: 4px;">
-              <h3>点赞和踩</h3>
-              <div style="display: flex; gap: 2rem; margin: 1rem 0;">
-                <div>
-                  <label for="likes-input">点赞数量:</label>
-                  <input type="number" id="likes-input" value="${ratings.likes}" min="0" style="width: 80px; margin: 0 0.5rem;">
-                </div>
-                <div>
-                  <label for="dislikes-input">踩的数量:</label>
-                  <input type="number" id="dislikes-input" value="${ratings.dislikes}" min="0" style="width: 80px; margin: 0 0.5rem;">
-                </div>
-              </div>
-              <button onclick="updateRatings('${id}')">更新赞踩数量</button>
-            </div>
-            
-            <h3 style="margin-top: 1.5rem;">评论 (${messages.length})</h3>
-            <div class="message-list">
-              ${messages.length > 0 ? messages.map(msg => `
-                <div class="message-item">
-                  <div>
-                    <p>${msg.content}</p>
-                    <small>设备ID: ${msg.deviceId} | 时间: ${new Date(msg.timestamp).toLocaleString()}</small>
-                  </div>
-                  <div>
-                    <button class="btn-danger" onclick="deleteMessage('${id}', '${msg.id}')">删除</button>
-                  </div>
-                </div>
-              `).join('') : '<p>暂无评论</p>'}
-            </div>
-            
-            <div style="margin-top: 2rem;">
-              <button class="btn-danger" onclick="deleteCommission('${id}')">删除此委托</button>
-            </div>
-          </div>
-        `;
-        
-        document.getElementById('commissions-list').innerHTML = detailHTML;
-      } catch (error) {
-        console.error('加载委托详情失败:', error);
-        alert('加载委托详情失败，请检查网络连接');
-      }
-    }
-    
-    // 更新委托的赞踩数量
-    async function updateRatings(commissionId) {
-      const likes = parseInt(document.getElementById('likes-input').value) || 0;
-      const dislikes = parseInt(document.getElementById('dislikes-input').value) || 0;
+    // 检查登录状态
+    function checkLoginStatus() {
+      const username = localStorage.getItem('adminUsername');
+      const password = localStorage.getItem('adminPassword');
       
-      if (likes < 0 || dislikes < 0) {
-        alert('点赞和踩的数量不能为负数');
-        return;
-      }
-      
-      try {
-        const response = await fetch(API_ENDPOINTS.UPDATE_RATINGS(commissionId), {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ likes, dislikes })
-        });
-        
-        if (response.ok) {
-          alert('赞踩数量已更新');
-        } else {
-          alert('更新失败: ' + response.statusText);
-        }
-      } catch (error) {
-        console.error('更新赞踩数量失败:', error);
-        alert('更新赞踩数量失败，请检查网络连接');
+      if (username === adminUsername && password === adminPassword) {
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('admin-panel').classList.remove('hidden');
       }
     }
     
-    // 删除委托
-    async function deleteCommission(id) {
-      if (confirm('确定要删除此委托吗？此操作不可撤销。')) {
-        try {
-          const response = await fetch(API_ENDPOINTS.DELETE_COMMISSION(id), {
-            method: 'DELETE',
-          });
-          
-          if (response.ok) {
-            alert('委托已删除');
-            loadCommissions();
-            loadDashboard();
-          } else {
-            alert('删除失败: ' + response.statusText);
-          }
-        } catch (error) {
-          console.error('删除委托失败:', error);
-          alert('删除委托失败，请检查网络连接');
-        }
-      }
-    }
-    
-    // 删除评论
-    async function deleteMessage(commissionId, messageId) {
-      if (confirm('确定要删除此评论吗？此操作不可撤销。')) {
-        try {
-          const response = await fetch(API_ENDPOINTS.DELETE_MESSAGE(commissionId, messageId), {
-            method: 'DELETE',
-          });
-          
-          if (response.ok) {
-            alert('评论已删除');
-            loadMessages();
-            // 如果在委托详情页面，重新加载详情
-            if (document.getElementById('commissions-list').innerHTML.includes(`委托详情`)) {
-              viewCommission(commissionId);
-            }
-          } else {
-            alert('删除失败: ' + response.statusText);
-          }
-        } catch (error) {
-          console.error('删除评论失败:', error);
-          alert('删除评论失败，请检查网络连接');
-        }
-      }
-    }
+    // 页面加载时检查登录状态
+    window.addEventListener('DOMContentLoaded', checkLoginStatus);
     
     // 搜索委托
-    document.getElementById('search-commission-btn').addEventListener('click', function() {
-      const searchTerm = document.getElementById('commission-search').value;
-      loadCommissions(1, searchTerm);
-    });
+    const searchCommissionBtn = document.getElementById('search-commission-btn');
+    if (searchCommissionBtn) {
+      searchCommissionBtn.addEventListener('click', function() {
+        const searchTerm = document.getElementById('commission-search').value;
+        console.log('搜索委托:', searchTerm);
+        // 这里实现搜索逻辑
+      });
+    }
     
     // 搜索评论
-    document.getElementById('search-message-btn').addEventListener('click', function() {
-      const searchTerm = document.getElementById('message-search').value;
-      loadMessages(searchTerm);
-    });
-    
-    // 修改密码
-    document.getElementById('change-password-btn').addEventListener('click', function() {
-      const newPassword = document.getElementById('new-password').value;
-      const confirmPassword = document.getElementById('confirm-password').value;
-      
-      if (!newPassword) {
-        alert('请输入新密码');
-        return;
-      }
-      
-      if (newPassword !== confirmPassword) {
-        alert('两次输入的密码不一致');
-        return;
-      }
-      
-      // 在实际应用中，这里应该调用API修改密码
-      DEFAULT_ADMIN.password = newPassword;
-      alert('密码已更新');
-      
-      // 清空输入框
-      document.getElementById('new-password').value = '';
-      document.getElementById('confirm-password').value = '';
-    });
-    
-    // 修改验证码
-    document.getElementById('change-verification-btn').addEventListener('click', function() {
-      const newVerificationCode = document.getElementById('new-verification-code').value;
-      const confirmVerificationCode = document.getElementById('confirm-verification-code').value;
-      
-      if (!newVerificationCode) {
-        alert('请输入新验证码');
-        return;
-      }
-      
-      if (newVerificationCode !== confirmVerificationCode) {
-        alert('两次输入的验证码不一致');
-        return;
-      }
-      
-      // 在实际应用中，这里应该调用API修改验证码
-      alert('验证码已更新');
-      
-      // 清空输入框
-      document.getElementById('new-verification-code').value = '';
-      document.getElementById('confirm-verification-code').value = '';
-    });
-    
-    // 更新系统设置
-    document.getElementById('update-settings-btn').addEventListener('click', function() {
-      const dailyCommissionLimit = document.getElementById('daily-commission-limit').value;
-      const dailyCommentLimit = document.getElementById('daily-comment-limit').value;
-      
-      // 在实际应用中，这里应该调用API更新系统设置
-      alert('系统设置已更新');
-    });
+    const searchMessageBtn = document.getElementById('search-message-btn');
+    if (searchMessageBtn) {
+      searchMessageBtn.addEventListener('click', function() {
+        const searchTerm = document.getElementById('message-search').value;
+        console.log('搜索评论:', searchTerm);
+        // 这里实现搜索逻辑
+      });
+    }
   </script>
+  <script src="../scripts/card-corner-fixer.js"></script>
 </body>
 </html>

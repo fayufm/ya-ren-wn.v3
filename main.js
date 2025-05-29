@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, Menu, session } = require('electron');
 const path = require('path');
-const { default: Store } = require('electron-store');
+// 使用自定义的electron-store模块
+const Store = require('./electron-store');
 const fs = require('fs');
 // 使用内联版本的uuid模块，尝试多种路径引用方式
 let uuidModule;
@@ -37,6 +38,7 @@ const os = require('os');
 
 // DeepSeek API配置
 const DEEPSEEK_API_KEY = 'sk-6bd25668fa0b4d60ab1402dcdef29651';
+const DEEPSEEK_BACKUP_API_KEY = 'sk-0b2be14756fe4195a7bc2bcb78d19f8f'; // 备用API密钥
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
 // 通义千问 API配置
@@ -666,7 +668,7 @@ ipcMain.handle('get-messages', (event, commissionId) => {
 // 添加消息到委托
 ipcMain.handle('add-message', (event, { commissionId, message }) => {
   const deviceId = getDeviceId();
-  console.log(`添加消息，设备ID: ${deviceId}，委托ID: ${commissionId}，消息内容: ${message}`);
+  console.log(`添加消息，设备ID: ${deviceId}，委托ID: ${commissionId}，消息内容:`, JSON.stringify(message));
   
   // 检查频率限制
   if (isRateLimited(deviceId)) {
@@ -683,8 +685,42 @@ ipcMain.handle('add-message', (event, { commissionId, message }) => {
     };
   }
   
+  // 检查API配置 - 即使在本地模式下也必须有API配置
+  const settings = store.get('settings') || {};
+  console.log('当前API设置:', JSON.stringify(settings));
+  
+  if (!settings.apiEndpoints || !Array.isArray(settings.apiEndpoints) || settings.apiEndpoints.length === 0) {
+    console.log('API未配置，拒绝发送消息');
+    logSecurityEvent('api-not-configured', { deviceId, action: 'add-message' });
+    return { 
+      error: 'api-not-configured', 
+      message: '请在设置中添加自定义API才能评论' 
+    };
+  } else {
+    console.log(`API配置有效，包含${settings.apiEndpoints.length}个端点`);
+  }
+  
+  // 提取和规范化消息内容
+  let messageContent = '';
+  if (message) {
+    if (typeof message === 'string') {
+      messageContent = message.trim();
+    } else if (typeof message.content === 'string') {
+      messageContent = message.content.trim();
+    } else if (message.content && typeof message.content.content === 'string') {
+      // 处理嵌套对象
+      messageContent = message.content.content.trim();
+    }
+  }
+  
+  // 确保消息内容非空
+  if (!messageContent) {
+    console.log('消息内容为空，拒绝发送');
+    return { error: 'empty-message', message: '消息内容不能为空' };
+  }
+  
   // 恶意内容检查
-  if (containsMaliciousCode(message)) {
+  if (containsMaliciousCode(messageContent)) {
     recordFailedAttempt(deviceId);
     logSecurityEvent('malicious-content-detected', { deviceId, action: 'add-message' });
     return { error: 'malicious-content', message: '检测到可能的恶意内容，请移除后重试' };
@@ -711,6 +747,7 @@ ipcMain.handle('add-message', (event, { commissionId, message }) => {
     // 检查总数限制
     const totalCount = userMessages.length;
     if (totalCount >= 50) {
+      console.log('用户评论总数已达到上限(50条)，拒绝发送');
       return { error: 'total-limit-reached', message: '您的评论总数已达到上限(50条)，无法继续发表评论' };
     }
     
@@ -724,23 +761,19 @@ ipcMain.handle('add-message', (event, { commissionId, message }) => {
     console.log(`用户今日评论数: ${todayMessages.length}`);
     
     if (todayMessages.length >= 10) {
+      console.log('用户今日评论数已达到上限(10条)，拒绝发送');
       return { error: 'daily-limit-reached', message: '您今天已发表10条评论，请明天再来' };
-    }
-    
-    // 确保消息内容非空
-    if (!message || message.trim() === '') {
-      return { error: 'empty-message', message: '消息内容不能为空' };
     }
     
     // 添加新消息
     const newMessage = {
       id: uuidv4(),
-      content: message.trim(), // 修复这里：确保消息内容被正确保存
+      content: messageContent,
       deviceId,
       timestamp: new Date().toISOString()
     };
     
-    console.log('新消息对象:', newMessage);
+    console.log('新消息对象:', JSON.stringify(newMessage));
     
     if (!messages[commissionId]) {
       messages[commissionId] = [];
@@ -1080,33 +1113,65 @@ ipcMain.handle('check-content', async (event, content) => {
     else {
       // 使用DeepSeek API进行内容审核
       console.log("使用DeepSeek API进行内容审核");
-      const response = await axios.post(
-        DEEPSEEK_API_URL,
-        {
-          model: 'deepseek-chat',
-          messages: [
-            {
-              role: 'system',
-              content: '你是内容审核助手，负责检查内容是否包含违规信息、不当内容或广告嫌疑。请严格检查以下内容，如果发现问题，说明具体问题；如果内容合规，只回复"通过审核"。'
-            },
-            {
-              role: 'user',
-              content: `请审核以下内容是否存在违规、色情、暴力、歧视、诈骗、广告或其他不适合的内容：\n标题：${title}\n详细内容：${description}`
+      try {
+        const response = await axios.post(
+          DEEPSEEK_API_URL,
+          {
+            model: 'deepseek-chat',
+            messages: [
+              {
+                role: 'system',
+                content: '你是内容审核助手，负责检查内容是否包含违规信息、不当内容或广告嫌疑。请严格检查以下内容，如果发现问题，说明具体问题；如果内容合规，只回复"通过审核"。'
+              },
+              {
+                role: 'user',
+                content: `请审核以下内容是否存在违规、色情、暴力、歧视、诈骗、广告或其他不适合的内容：\n标题：${title}\n详细内容：${description}`
+              }
+            ],
+            max_tokens: 200
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
             }
-          ],
-          max_tokens: 200
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
           }
-        }
-      );
-      
-      // 解析DeepSeek响应
-      reply = response.data.choices[0].message.content.trim();
-      isPassed = reply.includes('通过审核');
+        );
+        
+        // 解析DeepSeek响应
+        reply = response.data.choices[0].message.content.trim();
+        isPassed = reply.includes('通过审核');
+      } catch (error) {
+        console.log("主DeepSeek API失败，使用备用API密钥重试");
+        // 使用备用API密钥重试
+        const response = await axios.post(
+          DEEPSEEK_API_URL,
+          {
+            model: 'deepseek-chat',
+            messages: [
+              {
+                role: 'system',
+                content: '你是内容审核助手，负责检查内容是否包含违规信息、不当内容或广告嫌疑。请严格检查以下内容，如果发现问题，说明具体问题；如果内容合规，只回复"通过审核"。'
+              },
+              {
+                role: 'user',
+                content: `请审核以下内容是否存在违规、色情、暴力、歧视、诈骗、广告或其他不适合的内容：\n标题：${title}\n详细内容：${description}`
+              }
+            ],
+            max_tokens: 200
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${DEEPSEEK_BACKUP_API_KEY}`
+            }
+          }
+        );
+        
+        // 解析备用DeepSeek响应
+        reply = response.data.choices[0].message.content.trim();
+        isPassed = reply.includes('通过审核');
+      }
     }
     
     // 记录审核结果

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自动检测圆角图片示例</title>
+  <link rel="stylesheet" href="css/commission-card-fixed.css">
+  <style>
+    body {
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    h1, h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #333;
+    }
+    .section {
+      margin-bottom: 40px;
+    }
+    .section h2 {
+      margin-bottom: 20px;
+      color: #333;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+    }
+    .upload-section {
+      max-width: 600px;
+      margin: 0 auto 30px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    .btn {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    .btn:hover {
+      background: #2980b9;
+    }
+    #image-preview {
+      max-width: 100%;
+      margin-top: 20px;
+      display: none;
+    }
+    .instructions {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+      text-align: left;
+    }
+    .instructions h3 {
+      margin-top: 0;
+    }
+    .instructions ol {
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>自动检测圆角图片示例</h1>
+  
+  <div class="upload-section">
+    <h2>上传您的图片测试</h2>
+    <p>上传一张有圆角的图片，系统将自动检测并应用适当的样式</p>
+    
+    <input type="file" id="image-upload" accept="image/*" style="display: none;">
+    <button class="btn" id="upload-btn">选择图片</button>
+    <img id="image-preview" src="" alt="预览图">
+    
+    <div class="instructions">
+      <h3>使用说明</h3>
+      <ol>
+        <li>点击"选择图片"按钮上传一张有圆角的图片</li>
+        <li>系统将自动检测图片的圆角</li>
+        <li>如果检测到圆角，将应用特殊样式以确保正确显示</li>
+        <li>您可以在下方预览区域查看效果</li>
+      </ol>
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2>预览效果</h2>
+    <div class="container" id="preview-container">
+      <!-- 预览卡片将在这里动态生成 -->
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2>示例图片</h2>
+    <div class="container">
+      <!-- 普通图片 -->
+      <div class="commission-card">
+        <div class="commission-cover">
+          <img src="https://picsum.photos/800/450?random=1" alt="普通图片">
+        </div>
+        <div class="commission-content">
+          <h3 class="commission-title">普通图片</h3>
+          <p class="commission-description">这是一张没有圆角的普通图片。</p>
+          <div class="commission-meta">
+            <div class="commission-date">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              2023-05-28
+            </div>
+            <span class="commission-status status-pending">示例</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 手动设置圆角图片 -->
+      <div class="commission-card user-rounded-img">
+        <div class="commission-cover">
+          <img src="https://picsum.photos/800/450?random=2" alt="手动设置圆角">
+        </div>
+        <div class="commission-content">
+          <h3 class="commission-title">手动设置圆角</h3>
+          <p class="commission-description">这张图片被手动设置了圆角样式类。</p>
+          <div class="commission-meta">
+            <div class="commission-date">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              2023-05-27
+            </div>
+            <span class="commission-status status-completed">示例</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="js/card-corner-fixer.js"></script>
+  <script>
+    // 获取元素
+    const uploadBtn = document.getElementById('upload-btn');
+    const imageUpload = document.getElementById('image-upload');
+    const imagePreview = document.getElementById('image-preview');
+    const previewContainer = document.getElementById('preview-container');
+    
+    // 上传按钮点击事件
+    uploadBtn.addEventListener('click', function() {
+      imageUpload.click();
+    });
+    
+    // 图片上传事件
+    imageUpload.addEventListener('change', function() {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+          // 显示预览图
+          imagePreview.src = e.target.result;
+          imagePreview.style.display = 'block';
+          
+          // 创建预览卡片
+          createPreviewCard(e.target.result);
+        };
+        
+        reader.readAsDataURL(file);
+      }
+    });
+    
+    // 创建预览卡片
+    function createPreviewCard(imageSrc) {
+      // 清空预览容器
+      previewContainer.innerHTML = '';
+      
+      // 创建卡片
+      const card = document.createElement('div');
+      card.className = 'commission-card';
+      
+      // 创建封面容器
+      const cover = document.createElement('div');
+      cover.className = 'commission-cover';
+      
+      // 创建图片
+      const img = document.createElement('img');
+      img.src = imageSrc;
+      img.alt = '上传的图片';
+      
+      // 添加图片到封面
+      cover.appendChild(img);
+      
+      // 创建内容区域
+      const content = document.createElement('div');
+      content.className = 'commission-content';
+      
+      // 添加标题
+      const title = document.createElement('h3');
+      title.className = 'commission-title';
+      title.textContent = '您上传的图片';
+      content.appendChild(title);
+      
+      // 添加描述
+      const description = document.createElement('p');
+      description.className = 'commission-description';
+      description.textContent = '系统将自动检测图片是否有圆角，并应用适当的样式。';
+      content.appendChild(description);
+      
+      // 添加元信息
+      const meta = document.createElement('div');
+      meta.className = 'commission-meta';
+      
+      // 添加日期
+      const date = document.createElement('div');
+      date.className = 'commission-date';
+      date.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        ${new Date().toLocaleDateString()}
+      `;
+      meta.appendChild(date);
+      
+      // 添加状态
+      const status = document.createElement('span');
+      status.className = 'commission-status status-pending';
+      status.textContent = '测试中';
+      meta.appendChild(status);
+      
+      // 组装卡片
+      content.appendChild(meta);
+      card.appendChild(cover);
+      card.appendChild(content);
+      
+      // 添加到预览容器
+      previewContainer.appendChild(card);
+      
+      // 图片加载完成后检测圆角
+      img.onload = function() {
+        // 这里会触发card-corner-fixer.js中的检测逻辑
+        const event = new Event('DOMContentLoaded');
+        document.dispatchEvent(event);
+      };
+    }
+  </script>
+</body>
+</html>

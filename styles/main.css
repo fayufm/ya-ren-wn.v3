@@ -1015,7 +1015,7 @@ button[type="submit"]:active {
   flex: 1;
   padding: 10px;
   border: 1px solid var(--border-color);
-  border-radius: 4px 0 0 4px;
+  border-radius: 0 4px 4px 0;
   font-size: 16px;
   background-color: var(--card-background);
   color: var(--text-color);
@@ -1026,7 +1026,7 @@ button[type="submit"]:active {
   background-color: var(--primary-color);
   color: white;
   border: none;
-  border-radius: 0 4px 4px 0;
+  border-radius: 4px 0 0 4px;
   cursor: pointer;
 }
 
@@ -1100,6 +1100,16 @@ button[type="submit"]:active {
     position: absolute;
     top: 10px;
     right: 10px;
+  }
+  
+  /* 移动设备上的消息输入区域 */
+  .message-input {
+    display: flex;
+    flex-direction: row;
+  }
+  
+  .message-input button {
+    min-width: 70px;
   }
 }
 
@@ -2917,6 +2927,10 @@ body.dark-mode.classical-chinese-mode .delete-message-btn:hover {
   cursor: pointer;
 }
 
+.error-close:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
 /* 通知红点样式 */
 .notification-badge {
   position: absolute;
@@ -3099,4 +3113,227 @@ body.dark-mode .message-item:hover {
 body.dark-mode .empty-message {
   background-color: var(--dark-card-background);
   color: var(--dark-secondary-text-color);
+}
+
+
+/* 添加兼容性样式，支持commission-cover类名 */
+.commission-card .commission-cover {
+  width: 100%;
+  margin-bottom: 15px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  background-color: transparent !important;
+}
+
+.commission-card .commission-cover img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  display: block;
+  border-radius: inherit;
+}
+
+/* 文言文模式下的消息输入区域样式 */
+.classical-chinese-mode .message-input {
+  display: flex;
+  margin-top: 15px;
+  border: 1px solid #8B4513;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 3px 10px rgba(139, 69, 19, 0.15);
+}
+
+.classical-chinese-mode .message-input input {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 0;
+  font-family: 'FangSong', 'STFangsong', serif;
+  font-size: 16px;
+  color: #483c32;
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.classical-chinese-mode .message-input button {
+  padding: 10px 20px;
+  background: linear-gradient(45deg, #8B4513, #D2691E);
+  color: #f8f4e9;
+  border: none;
+  border-radius: 0;
+  font-family: 'FangSong', 'STFangsong', serif;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.classical-chinese-mode .message-input button:hover {
+  background: linear-gradient(45deg, #A0522D, #CD853F);
+}
+
+/* 深色文言文模式下的消息输入区域样式 */
+body.dark-mode.classical-chinese-mode .message-input {
+  border-color: #CD853F;
+  box-shadow: 0 3px 10px rgba(205, 133, 63, 0.2);
+}
+
+body.dark-mode.classical-chinese-mode .message-input input {
+  background-color: rgba(42, 37, 32, 0.8);
+  color: #e8d8c0;
+}
+
+body.dark-mode.classical-chinese-mode .message-input button {
+  background: linear-gradient(45deg, #CD853F, #D2691E);
+  color: #e8d8c0;
+}
+
+body.dark-mode.classical-chinese-mode .message-input button:hover {
+  background: linear-gradient(45deg, #D2691E, #CD853F);
+}
+
+/* 聊天室全屏相关样式 */
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* 实时消息连接状态指示器 */
+.chat-status {
+  display: flex;
+  align-items: center;
+  margin: 0 10px;
+}
+
+.realtime-status {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #888;
+}
+
+.realtime-status i {
+  font-size: 8px;
+  margin-right: 5px;
+  color: #ccc;
+}
+
+.realtime-status.connected i {
+  color: #4caf50;
+}
+
+.realtime-status.connecting i {
+  color: #ff9800;
+}
+
+.realtime-status.error i {
+  color: #f44336;
+}
+
+.chat-fullscreen-btn {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 5px;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.chat-fullscreen-btn:hover {
+  background-color: var(--hover-color);
+  transform: scale(1.1);
+}
+
+.chat-fullscreen-btn:active {
+  transform: scale(0.95);
+}
+
+/* 聊天室全屏模式 */
+.chat-section.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  background-color: var(--background-color);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-section.fullscreen .chat-header {
+  margin-bottom: 15px;
+}
+
+.chat-section.fullscreen #chat-messages {
+  flex-grow: 1;
+  height: calc(100% - 120px);
+  max-height: none;
+  overflow-y: auto;
+}
+
+.chat-section.fullscreen .chat-fullscreen-btn i {
+  transform: rotate(45deg);
+}
+
+.chat-section.fullscreen .message-input {
+  margin-top: 15px;
+  width: 100%;
+}
+
+/* 深色模式下的全屏样式 */
+body.dark-mode .chat-section.fullscreen {
+  background-color: var(--background-color);
+}
+
+body.dark-mode .chat-fullscreen-btn {
+  color: var(--text-color);
+}
+
+body.dark-mode .chat-fullscreen-btn:hover {
+  background-color: var(--hover-color);
+}
+
+/* 文言文模式下的全屏按钮样式 */
+.classical-chinese-mode .chat-fullscreen-btn {
+  color: #8a6d3b;
+  border: 1px solid rgba(138, 109, 59, 0.3);
+}
+
+.classical-chinese-mode .chat-fullscreen-btn:hover {
+  background-color: rgba(138, 109, 59, 0.1);
+}
+
+body.dark-mode.classical-chinese-mode .chat-fullscreen-btn {
+  color: #d4b98c;
+  border: 1px solid rgba(212, 185, 140, 0.3);
+}
+
+body.dark-mode.classical-chinese-mode .chat-fullscreen-btn:hover {
+  background-color: rgba(212, 185, 140, 0.1);
+}
+
+/* 版本信息 */
+.version-info {
+  position: fixed;
+  bottom: 5px;
+  left: 10px;
+  font-size: 12px;
+  color: #888;
+  opacity: 0.7;
+  z-index: 100;
+}
+
+body.dark-mode .version-info {
+  color: #aaa;
 }

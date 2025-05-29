@@ -1,0 +1,570 @@
+const fs = require('fs');
+const path = require('path');
+
+// 定义目标路径
+const publicDir = path.join(__dirname, 'public');
+const cssDir = path.join(publicDir, 'css');
+
+// 检查CSS文件是否存在
+if (!fs.existsSync(path.join(cssDir, 'commission-card.css'))) {
+  console.error('错误: 委托卡片CSS文件不存在，请先运行 fix-commission-card.js');
+  process.exit(1);
+}
+
+// 创建自定义圆角CSS文件
+const customRadiusPath = path.join(cssDir, 'custom-radius.css');
+const customRadiusContent = `/* 自定义圆角设置 */
+
+/* 如果需要为所有委托卡片设置统一的圆角大小，请修改下面的值 */
+:root {
+  --card-radius: 8px;         /* 卡片圆角大小 */
+  --cover-radius: 8px 8px 0 0; /* 封面容器圆角大小 */
+  --img-radius: 8px 8px 0 0;   /* 图片圆角大小 */
+}
+
+/* 应用自定义圆角设置 */
+.commission-card {
+  border-radius: var(--card-radius);
+}
+
+.commission-cover {
+  border-radius: var(--cover-radius);
+}
+
+.commission-cover img {
+  border-radius: var(--img-radius);
+}
+
+/* 为特定卡片设置不同的圆角大小 */
+.commission-card.large-radius {
+  --card-radius: 16px;
+  --cover-radius: 16px 16px 0 0;
+  --img-radius: 16px 16px 0 0;
+}
+
+.commission-card.medium-radius {
+  --card-radius: 12px;
+  --cover-radius: 12px 12px 0 0;
+  --img-radius: 12px 12px 0 0;
+}
+
+.commission-card.small-radius {
+  --card-radius: 4px;
+  --cover-radius: 4px 4px 0 0;
+  --img-radius: 4px 4px 0 0;
+}
+
+.commission-card.rounded-img {
+  --img-radius: 50%;
+}
+
+/* 如果需要圆形封面图 */
+.commission-card.circle-cover {
+  --cover-radius: 50% 50% 0 0;
+  --img-radius: 50% 50% 0 0;
+}
+
+/* 完全无圆角 */
+.commission-card.no-radius {
+  --card-radius: 0;
+  --cover-radius: 0;
+  --img-radius: 0;
+}
+`;
+
+fs.writeFileSync(customRadiusPath, customRadiusContent, 'utf8');
+console.log(`已创建自定义圆角CSS文件: ${customRadiusPath}`);
+
+// 创建示例HTML文件
+const customRadiusExamplePath = path.join(publicDir, 'custom-radius-example.html');
+const customRadiusExampleContent = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>委托卡片自定义圆角示例</title>
+  <link rel="stylesheet" href="css/commission-card.css">
+  <link rel="stylesheet" href="css/custom-radius.css">
+  <style>
+    body {
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    h1, h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #333;
+    }
+    .section {
+      margin-bottom: 40px;
+    }
+    .section h2 {
+      margin-bottom: 20px;
+      color: #333;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+    }
+    .custom-controls {
+      max-width: 600px;
+      margin: 0 auto 30px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    .control-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input[type="range"] {
+      width: 100%;
+    }
+    .value-display {
+      text-align: center;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    .btn {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    .btn:hover {
+      background: #2980b9;
+    }
+    .css-output {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      font-family: monospace;
+      white-space: pre;
+      overflow-x: auto;
+      margin-top: 15px;
+    }
+    .radius-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .radius-option {
+      padding: 8px 12px;
+      background: #eee;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .radius-option.active {
+      background: #3498db;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>委托卡片自定义圆角示例</h1>
+  
+  <div class="custom-controls">
+    <h2>自定义圆角设置</h2>
+    
+    <div class="control-group">
+      <label>预设圆角样式:</label>
+      <div class="radius-options">
+        <div class="radius-option active" data-preset="default">默认</div>
+        <div class="radius-option" data-preset="small">小圆角</div>
+        <div class="radius-option" data-preset="medium">中圆角</div>
+        <div class="radius-option" data-preset="large">大圆角</div>
+        <div class="radius-option" data-preset="rounded">圆形图片</div>
+        <div class="radius-option" data-preset="none">无圆角</div>
+      </div>
+    </div>
+    
+    <div class="control-group">
+      <label for="card-radius">卡片圆角大小 (px):</label>
+      <input type="range" id="card-radius" min="0" max="30" value="8" step="1">
+      <div class="value-display" id="card-radius-value">8px</div>
+    </div>
+    
+    <div class="control-group">
+      <label for="cover-radius">封面容器圆角大小 (px):</label>
+      <input type="range" id="cover-radius" min="0" max="30" value="8" step="1">
+      <div class="value-display" id="cover-radius-value">8px</div>
+    </div>
+    
+    <div class="control-group">
+      <label for="img-radius">图片圆角大小 (px):</label>
+      <input type="range" id="img-radius" min="0" max="30" value="8" step="1">
+      <div class="value-display" id="img-radius-value">8px</div>
+    </div>
+    
+    <button class="btn" id="generate-css">生成CSS代码</button>
+    
+    <div class="css-output" id="css-output" style="display: none;"></div>
+  </div>
+  
+  <div class="section">
+    <h2>预览效果</h2>
+    <div class="container" id="preview-container">
+      <!-- 默认卡片 -->
+      <div class="commission-card" id="preview-card">
+        <div class="commission-cover">
+          <img src="https://picsum.photos/800/450?random=1" alt="预览封面">
+        </div>
+        <div class="commission-content">
+          <h3 class="commission-title">自定义圆角预览</h3>
+          <p class="commission-description">调整上方的滑块，预览不同圆角大小的效果。</p>
+          <div class="commission-meta">
+            <div class="commission-date">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              2023-05-28
+            </div>
+            <span class="commission-status status-pending">预览中</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2>不同圆角样式示例</h2>
+    <div class="container">
+      <!-- 默认圆角 -->
+      <div class="commission-card">
+        <div class="commission-cover">
+          <img src="https://picsum.photos/800/450?random=2" alt="默认圆角封面">
+        </div>
+        <div class="commission-content">
+          <h3 class="commission-title">默认圆角</h3>
+          <p class="commission-description">使用默认的8px圆角设置。</p>
+          <div class="commission-meta">
+            <div class="commission-date">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              2023-05-28
+            </div>
+            <span class="commission-status status-pending">示例</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 大圆角 -->
+      <div class="commission-card large-radius">
+        <div class="commission-cover">
+          <img src="https://picsum.photos/800/450?random=3" alt="大圆角封面">
+        </div>
+        <div class="commission-content">
+          <h3 class="commission-title">大圆角</h3>
+          <p class="commission-description">使用16px的大圆角设置。</p>
+          <div class="commission-meta">
+            <div class="commission-date">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              2023-05-27
+            </div>
+            <span class="commission-status status-completed">示例</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 圆形图片 -->
+      <div class="commission-card rounded-img">
+        <div class="commission-cover">
+          <img src="https://picsum.photos/800/450?random=4" alt="圆形图片封面">
+        </div>
+        <div class="commission-content">
+          <h3 class="commission-title">圆形图片</h3>
+          <p class="commission-description">图片使用圆形样式，适合正方形图片。</p>
+          <div class="commission-meta">
+            <div class="commission-date">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              2023-05-26
+            </div>
+            <span class="commission-status status-rejected">示例</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // 获取控制元素
+    const cardRadiusInput = document.getElementById('card-radius');
+    const cardRadiusValue = document.getElementById('card-radius-value');
+    const coverRadiusInput = document.getElementById('cover-radius');
+    const coverRadiusValue = document.getElementById('cover-radius-value');
+    const imgRadiusInput = document.getElementById('img-radius');
+    const imgRadiusValue = document.getElementById('img-radius-value');
+    const generateCssBtn = document.getElementById('generate-css');
+    const cssOutput = document.getElementById('css-output');
+    const previewCard = document.getElementById('preview-card');
+    const radiusOptions = document.querySelectorAll('.radius-option');
+    
+    // 更新显示值
+    cardRadiusInput.addEventListener('input', function() {
+      cardRadiusValue.textContent = this.value + 'px';
+      updatePreview();
+    });
+    
+    coverRadiusInput.addEventListener('input', function() {
+      coverRadiusValue.textContent = this.value + 'px';
+      updatePreview();
+    });
+    
+    imgRadiusInput.addEventListener('input', function() {
+      imgRadiusValue.textContent = this.value + 'px';
+      updatePreview();
+    });
+    
+    // 预设选项点击事件
+    radiusOptions.forEach(option => {
+      option.addEventListener('click', function() {
+        // 移除所有active类
+        radiusOptions.forEach(opt => opt.classList.remove('active'));
+        // 添加active类到当前选项
+        this.classList.add('active');
+        
+        const preset = this.getAttribute('data-preset');
+        applyPreset(preset);
+      });
+    });
+    
+    // 应用预设
+    function applyPreset(preset) {
+      switch(preset) {
+        case 'default':
+          cardRadiusInput.value = 8;
+          coverRadiusInput.value = 8;
+          imgRadiusInput.value = 8;
+          break;
+        case 'small':
+          cardRadiusInput.value = 4;
+          coverRadiusInput.value = 4;
+          imgRadiusInput.value = 4;
+          break;
+        case 'medium':
+          cardRadiusInput.value = 12;
+          coverRadiusInput.value = 12;
+          imgRadiusInput.value = 12;
+          break;
+        case 'large':
+          cardRadiusInput.value = 16;
+          coverRadiusInput.value = 16;
+          imgRadiusInput.value = 16;
+          break;
+        case 'rounded':
+          cardRadiusInput.value = 8;
+          coverRadiusInput.value = 8;
+          imgRadiusInput.value = 30;
+          break;
+        case 'none':
+          cardRadiusInput.value = 0;
+          coverRadiusInput.value = 0;
+          imgRadiusInput.value = 0;
+          break;
+      }
+      
+      // 更新显示值
+      cardRadiusValue.textContent = cardRadiusInput.value + 'px';
+      coverRadiusValue.textContent = coverRadiusInput.value + 'px';
+      imgRadiusValue.textContent = imgRadiusInput.value + 'px';
+      
+      // 更新预览
+      updatePreview();
+    }
+    
+    // 更新预览
+    function updatePreview() {
+      const cardRadius = cardRadiusInput.value + 'px';
+      const coverRadius = coverRadiusInput.value + 'px';
+      const imgRadius = imgRadiusInput.value + 'px';
+      
+      previewCard.style.borderRadius = cardRadius;
+      previewCard.querySelector('.commission-cover').style.borderRadius = \`\${coverRadius} \${coverRadius} 0 0\`;
+      previewCard.querySelector('.commission-cover img').style.borderRadius = \`\${imgRadius} \${imgRadius} 0 0\`;
+    }
+    
+    // 生成CSS代码
+    generateCssBtn.addEventListener('click', function() {
+      const cardRadius = cardRadiusInput.value;
+      const coverRadius = coverRadiusInput.value;
+      const imgRadius = imgRadiusInput.value;
+      
+      const css = \`/* 自定义圆角设置 */
+:root {
+  --card-radius: \${cardRadius}px;
+  --cover-radius: \${coverRadius}px \${coverRadius}px 0 0;
+  --img-radius: \${imgRadius}px \${imgRadius}px 0 0;
+}
+
+/* 应用自定义圆角设置 */
+.commission-card {
+  border-radius: var(--card-radius);
+}
+
+.commission-cover {
+  border-radius: var(--cover-radius);
+}
+
+.commission-cover img {
+  border-radius: var(--img-radius);
+}\`;
+      
+      cssOutput.textContent = css;
+      cssOutput.style.display = 'block';
+      
+      // 复制到剪贴板
+      const textArea = document.createElement('textarea');
+      textArea.value = css;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '0';
+      textArea.style.top = '0';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        const msg = successful ? '已复制CSS代码到剪贴板!' : '复制失败';
+        alert(msg);
+      } catch (err) {
+        console.error('无法复制', err);
+      }
+      
+      document.body.removeChild(textArea);
+    });
+    
+    // 初始化预览
+    updatePreview();
+  </script>
+</body>
+</html>`;
+
+fs.writeFileSync(customRadiusExamplePath, customRadiusExampleContent, 'utf8');
+console.log(`已创建自定义圆角示例页面: ${customRadiusExamplePath}`);
+
+// 更新实施指南
+const implementationGuidePath = path.join(__dirname, 'commission-card-implementation.md');
+if (fs.existsSync(implementationGuidePath)) {
+  let guideContent = fs.readFileSync(implementationGuidePath, 'utf8');
+  
+  // 添加自定义圆角部分
+  if (!guideContent.includes('## 自定义圆角设置')) {
+    guideContent += `
+
+## 自定义圆角设置
+
+为了满足不同用户对圆角大小的需求，我们提供了自定义圆角设置：
+
+1. 使用CSS变量定义圆角大小，方便全局或局部调整
+2. 提供预设样式类，可以快速应用不同的圆角效果
+3. 创建了自定义圆角测试页面，可以实时预览效果
+
+### 使用自定义圆角
+
+1. 在HTML文件中引入自定义圆角CSS：
+
+\`\`\`html
+<link rel="stylesheet" href="/css/custom-radius.css">
+\`\`\`
+
+2. 应用预设样式类：
+
+\`\`\`html
+<!-- 大圆角 -->
+<div class="commission-card large-radius">
+  <!-- 卡片内容 -->
+</div>
+
+<!-- 圆形图片 -->
+<div class="commission-card rounded-img">
+  <!-- 卡片内容 -->
+</div>
+\`\`\`
+
+3. 或者自定义CSS变量：
+
+\`\`\`css
+/* 全局设置 */
+:root {
+  --card-radius: 10px;
+  --cover-radius: 10px 10px 0 0;
+  --img-radius: 10px 10px 0 0;
+}
+
+/* 特定卡片设置 */
+.special-card {
+  --card-radius: 20px;
+  --cover-radius: 20px 20px 0 0;
+  --img-radius: 20px 20px 0 0;
+}
+\`\`\`
+
+### 测试自定义圆角
+
+使用 \`public/custom-radius-example.html\` 页面测试不同圆角设置的效果：
+
+1. 选择预设圆角样式或调整滑块
+2. 实时预览效果
+3. 点击"生成CSS代码"按钮获取CSS代码
+`;
+    
+    fs.writeFileSync(implementationGuidePath, guideContent, 'utf8');
+    console.log(`已更新实施指南: ${implementationGuidePath}`);
+  }
+}
+
+console.log(`
+==========================================================
+            自定义圆角设置功能添加完成！
+==========================================================
+
+已添加的功能:
+1. 创建了自定义圆角CSS文件，使用CSS变量定义圆角大小
+2. 提供了多种预设样式类，可以快速应用不同的圆角效果
+3. 创建了自定义圆角测试页面，可以实时预览效果
+4. 更新了实施指南，添加了自定义圆角设置部分
+
+使用方法:
+1. 在浏览器中打开 public/custom-radius-example.html 测试不同圆角设置
+2. 选择预设样式或调整滑块，实时预览效果
+3. 点击"生成CSS代码"按钮获取CSS代码
+4. 将CSS代码应用到项目中，或者使用预设样式类
+
+==========================================================
+`); 

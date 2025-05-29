@@ -29,7 +29,7 @@ const detailFilesContainer = document.getElementById('detail-files-container');
 const detailAdditionalFiles = document.getElementById('detail-additional-files');
 const chatMessages = document.getElementById('chat-messages');
 const messageInput = document.getElementById('message-input');
-const sendMessage = document.getElementById('send-message');
+const sendMessageButton = document.getElementById('send-message');
 const imagePreview = document.getElementById('image-preview');
 const imageUpload = document.getElementById('image-upload');
 const selectImageBtn = document.getElementById('select-image-btn');
@@ -54,7 +54,7 @@ let darkModeLocked = false;
 let darkModeLockTimer = null;
 
 // 当前选中的委托ID
-let currentCommissionId = null;
+let appCurrentCommissionId = null;
 let currentImageData = null; // 存储当前选择的图片数据
 let currentLocation = '全国'; // 当前选择的地区
 let additionalFiles = []; // 存储额外的图片和视频文件
@@ -1106,7 +1106,7 @@ function renderCommissionsList(commissions, container) {
     // 如果有图片则显示
     if (commission.image) {
       const imageContainer = document.createElement('div');
-      imageContainer.className = 'card-image';
+      imageContainer.className = 'commission-cover';
       const img = document.createElement('img');
       img.src = commission.image;
       img.alt = commission.title;
@@ -1226,7 +1226,7 @@ async function showCommissionDetail(id) {
   }
   
   console.log(`正在加载委托详情，ID: ${id}`);
-  currentCommissionId = id;
+  appCurrentCommissionId = id;
   
   try {
     showTab('detail');
@@ -1257,6 +1257,12 @@ async function showCommissionDetail(id) {
     }
     
     console.log('委托信息获取成功:', commission);
+    
+    // 加入WebSocket聊天室
+    if (window.WebSocketClient) {
+      console.log(`加入委托[${id}]的WebSocket聊天室`);
+      window.WebSocketClient.joinCommission(id);
+    }
     
     // 加载委托赞踩信息
     console.log(`正在获取赞踩信息，ID: ${id}`);
@@ -1401,18 +1407,34 @@ function renderChatMessages(messages) {
     for (const msg of messages) {
       console.log('处理聊天消息：', msg);
       
-      // 确保消息内容存在并且是有效字符串
-      let content = '(空消息)';
-      if (msg && typeof msg.content === 'string' && msg.content.trim() !== '') {
-        content = msg.content;
+      // 检查消息是否有效
+      if (!msg || !msg.id) {
+        console.warn('跳过无效消息:', msg);
+        continue;
+      }
+      
+      // 检查消息对象格式，可能是旧格式的消息
+      let content;
+      if (typeof msg.content === 'string') {
+        content = msg.content.trim();
+      } else if (msg.content && typeof msg.content.content === 'string') {
+        // 旧格式的嵌套内容
+        content = msg.content.content.trim();
       } else {
-        console.warn('聊天消息内容无效或为空:', msg);
+        console.warn('消息内容格式无效:', msg);
+        content = '';
+      }
+      
+      // 如果消息内容为空，跳过此消息（正常情况不应该发生，因为已经在发送时验证）
+      if (!content) {
+        console.warn('跳过空消息内容:', msg);
+        continue;
       }
       
       const messageElement = document.createElement('div');
       
       // 根据设备ID判断是否是自己的消息
-      const isSelfMessage = msg && msg.deviceId === deviceId;
+      const isSelfMessage = msg.deviceId === deviceId;
       messageElement.className = `message ${isSelfMessage ? 'message-self' : 'message-other'}`;
       
       // 创建消息内容容器
@@ -1423,7 +1445,7 @@ function renderChatMessages(messages) {
       // 创建消息时间容器
       const messageTime = document.createElement('div');
       messageTime.className = 'message-time';
-      messageTime.textContent = msg && msg.timestamp ? formatDate(msg.timestamp) : '未知时间';
+      messageTime.textContent = msg.timestamp ? formatDate(msg.timestamp) : '未知时间';
       
       // 添加消息内容和时间
       messageElement.appendChild(messageContent);
@@ -1439,7 +1461,7 @@ function renderChatMessages(messages) {
         // 添加删除事件
         deleteButton.addEventListener('click', (e) => {
           e.stopPropagation();
-          deleteUserMessage(commission.id, msg.id);
+          deleteUserMessage(appCurrentCommissionId, msg.id);
         });
         
         messageElement.appendChild(deleteButton);
@@ -1447,7 +1469,7 @@ function renderChatMessages(messages) {
         // 为自己的消息添加右键菜单删除功能
         messageElement.addEventListener('contextmenu', (e) => {
           e.preventDefault(); // 阻止默认右键菜单
-          deleteUserMessage(commission.id, msg.id); // 调用删除功能
+          deleteUserMessage(appCurrentCommissionId, msg.id); // 调用删除功能
         });
       }
       
@@ -1460,11 +1482,26 @@ function renderChatMessages(messages) {
     console.error('获取设备ID失败:', error);
     // 即使获取设备ID失败，也继续显示消息
     for (const msg of messages) {
+      // 检查消息是否有效
+      if (!msg || !msg.id) {
+        continue;
+      }
+      
+      // 提取消息内容
+      let content = '';
+      if (typeof msg.content === 'string') {
+        content = msg.content.trim();
+      } else if (msg.content && typeof msg.content.content === 'string') {
+        content = msg.content.content.trim();
+      }
+      
+      // 跳过空消息
+      if (!content) {
+        continue;
+      }
+      
       const messageElement = document.createElement('div');
       messageElement.className = 'message message-other';
-      
-      // 确保消息内容存在
-      const content = msg && msg.content ? msg.content : '(空消息)';
       
       messageElement.innerHTML = `
         <div class="message-content">${escapeHtml(content)}</div>
@@ -2480,7 +2517,7 @@ searchInput.addEventListener('keypress', (e) => {
 });
 
 // 发送消息
-sendMessage.addEventListener('click', sendChatMessage);
+sendMessageButton.addEventListener('click', sendChatMessage);
 messageInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
     sendChatMessage();
@@ -2603,7 +2640,7 @@ async function deleteCommission(id) {
     await window.api.deleteCommission(id);
     
     // 如果当前正在查看被删除的委托，则返回首页
-    if (currentCommissionId === id && detailView.classList.contains('active')) {
+    if (appCurrentCommissionId === id && detailView.classList.contains('active')) {
       showTab('home');
     }
     
@@ -2637,10 +2674,14 @@ function initExpiryDatePicker() {
   expiryDateInput.value = defaultDateStr;
 }
 
+// 应用版本号
+const APP_VERSION = '1.2.1';
+
 // 初始化应用
 async function initApp() {
   try {
-    console.log('应用初始化开始...');
+    console.log('初始化应用程序...');
+    console.log(`应用版本: ${APP_VERSION}`);
     
     // 确保API正确初始化
     if (!window.api) {
@@ -2660,50 +2701,209 @@ async function initApp() {
     if (missingMethods.length > 0) {
       console.error(`API缺少必要的方法: ${missingMethods.join(', ')}`);
   }
+    
+    // 检查并修复API设置
+    await checkAndFixApiSettings();
   
     // 初始化各个视图
     showTab(homeTab);
     
-    try {
       // 加载委托列表
-      await loadCommissions();
-    } catch (e) {
-      console.error('加载委托列表失败:', e);
-    }
-    
     try {
-      // 加载限制信息
-      await updateLimitsInfo();
-    } catch (e) {
-      console.error('加载限制信息失败:', e);
+      await loadCommissions();
+    } catch (error) {
+      console.error('加载委托列表失败:', error);
     }
     
-    // 加载API端点配置
+    // 加载我的委托
+    try {
+      await loadMyCommissions();
+    } catch (error) {
+      console.error('加载我的委托失败:', error);
+    }
+    
+    // 加载设置
+    try {
     await loadSettings();
+    } catch (error) {
+      console.error('加载设置失败:', error);
+    }
+    
+    // 更新限制信息
+    try {
+      await updateLimitsInfo();
+    } catch (error) {
+      console.error('更新限制信息失败:', error);
+    }
     
     // 初始化截止日期选择器
     initExpiryDatePicker();
     
+    // 加载我的消息
+    try {
+      await loadMyMessages();
+    } catch (error) {
+      console.error('加载我的消息失败:', error);
+    }
+    
     // 设置全屏监听
     setupFullscreenListener();
     
-    // 添加窗口控制按钮
+    // 绑定系统按钮事件
     findAndAttachToSystemButtons();
   
-    // 添加导航按钮动画
-    addNavButtonsAnimation();
-  
-    // 添加拖拽彩蛋样式
-    addDragEasterEggStyles();
+    // 设置自动更新
+    setupAutoUpdater();
     
-    // 初始化通知系统
+    // 设置错误横幅
+    setupErrorBanner();
+    
+    // 应用文言文模式（如果已启用）
+    checkAndApplyClassicalChineseMode();
+    
+    // 初始化聊天室全屏按钮
+    initChatFullscreenButton();
+    
+    // 初始化WebSocket连接
+    initWebSocketConnection();
+    
+    console.log('应用程序初始化完成');
+  } catch (error) {
+    console.error('应用程序初始化失败:', error);
+  }
+}
+
+// 初始化WebSocket连接
+function initWebSocketConnection() {
+  // 检查WebSocketClient是否已加载
+  if (!window.WebSocketClient) {
+    console.error('WebSocketClient未加载，无法初始化WebSocket连接');
+    // 尝试加载WebSocket客户端脚本
+    loadWebSocketScript();
+    return;
+  }
+  
+  // 获取API服务器URL
+  let serverUrl = '';
+  if (window.API_ENDPOINTS && window.API_ENDPOINTS.API_SERVER) {
+    serverUrl = window.API_ENDPOINTS.API_SERVER;
+  } else {
+    serverUrl = window.location.origin;
+  }
+  
+  // 连接WebSocket服务器
+  console.log('正在连接WebSocket服务器:', serverUrl);
+  window.WebSocketClient.connect(serverUrl);
+  
+  // 注册消息处理程序
+  window.WebSocketClient.onNewMessage(handleRealTimeMessage);
+  
+  // 注册评分处理程序
+  window.WebSocketClient.onRatingUpdate(handleRealTimeRatingUpdate);
+}
+
+// 加载WebSocket客户端脚本
+function loadWebSocketScript() {
+  const script = document.createElement('script');
+  script.src = 'scripts/websocket-client.js';
+  script.async = true;
+  
+  script.onload = () => {
+    console.log('WebSocket客户端脚本加载成功');
+    // 加载成功后初始化WebSocket连接
+    initWebSocketConnection();
+  };
+  
+  script.onerror = () => {
+    console.error('WebSocket客户端脚本加载失败，无法使用实时通信功能');
+  };
+  
+  document.head.appendChild(script);
+}
+
+// 处理实时消息
+function handleRealTimeMessage(data) {
+  console.log('收到实时消息:', data);
+  
+  // 检查是否是当前正在查看的委托
+  if (data.commissionId === appCurrentCommissionId) {
+    // 更新消息列表
+    loadChatMessages(appCurrentCommissionId);
+    
+    // 显示新消息提示
+    showToast('收到新消息');
+  } else {
+    // 如果不是当前委托，显示通知
     if (window.NotificationSystem) {
-      window.NotificationSystem.init();
+      window.NotificationSystem.checkNewMessages();
+    }
+  }
+}
+
+// 处理实时评分更新
+function handleRealTimeRatingUpdate(data) {
+  console.log('收到实时评分更新:', data);
+  
+  // 检查是否是当前正在查看的委托
+  if (data.commissionId === appCurrentCommissionId) {
+    // 更新点赞和踩数量
+    likeCount.textContent = data.likes || '0';
+    dislikeCount.textContent = data.dislikes || '0';
+  }
+}
+
+// 检查并修复API设置
+async function checkAndFixApiSettings() {
+  console.log('检查API设置...');
+  try {
+    const settings = await window.api.getSettings();
+    console.log('当前API设置:', settings);
+    
+    // 确保apiEndpoints存在且是数组
+    if (!settings.apiEndpoints || !Array.isArray(settings.apiEndpoints)) {
+      console.log('API设置不完整，正在修复...');
+      
+      // 创建新的设置对象
+      const newSettings = {
+        ...settings,
+        apiEndpoints: Array.isArray(settings.apiEndpoints) ? settings.apiEndpoints : []
+      };
+      
+      // 保存修复后的设置
+      await updateSettings(newSettings);
+      console.log('API设置已修复:', newSettings);
+    
+      // 更新API列表显示
+      renderApiList(newSettings.apiEndpoints);
     }
     
-    console.log('应用初始化完成');
-  } catch (e) {
-    console.error('应用初始化失败:', e);
+    // 如果API端点列表为空，添加默认端点
+    if (settings.apiEndpoints && settings.apiEndpoints.length === 0) {
+      console.log('API端点列表为空，添加默认端点');
+      
+      // 添加默认API端点
+      const defaultApiEndpoint = 'http://8.155.16.247:3000/api/content-filter';
+      
+      const newSettings = {
+        ...settings,
+        apiEndpoints: [...settings.apiEndpoints, defaultApiEndpoint]
+      };
+      
+      // 保存更新后的设置
+      await updateSettings(newSettings);
+      console.log('已添加默认API端点:', defaultApiEndpoint);
+      
+      // 更新API列表显示
+      renderApiList(newSettings.apiEndpoints);
+      
+      // 显示提示
+      showToast('已添加默认API端点');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('检查API设置时出错:', error);
+    return false;
     }
 }
 
@@ -3071,23 +3271,55 @@ async function sendChatMessage() {
     const messageText = messageInput.value.trim();
     if (!messageText) return;
     
+    // 显示加载提示
+    showToast('正在验证...');
+    console.log('开始验证消息发送权限...');
+    
     // 检查评论限制
     const canComment = await checkCommentLimit();
+    console.log('评论限制检查结果:', canComment);
     if (!canComment) {
       showCustomAlert('您今日的评论次数已达到上限，请明天再试。');
+      return;
+    }
+    
+    // 严格检查API设置 - 不论本地还是远程模式都需要检查
+    let apiConfigured = false;
+    try {
+      console.log('开始检查API设置...');
+      const settings = await window.api.getSettings();
+      console.log('获取到的API设置:', settings);
+      if (settings && settings.apiEndpoints && Array.isArray(settings.apiEndpoints) && settings.apiEndpoints.length > 0) {
+        apiConfigured = true;
+        console.log('API配置有效，包含', settings.apiEndpoints.length, '个端点');
+      } else {
+        console.error('API未配置或格式错误:', settings);
+        showCustomAlert('请在"我的"页面的"设置"中添加自定义API才能评论。');
+        return;
+      }
+    } catch (error) {
+      console.error('获取API设置失败:', error);
+      showCustomAlert('无法验证API设置，请在"我的"页面的"设置"中添加自定义API后再尝试评论。');
+      return;
+    }
+    
+    if (!apiConfigured) {
+      console.error('API未配置，无法发送消息');
+      showCustomAlert('请在"我的"页面的"设置"中添加自定义API才能评论。');
       return;
     }
     
     // 是否为颜文字模式
     const isKaomoji = isKaomojiInput(messageText);
     
-    if (currentCommissionId) {
+    if (appCurrentCommissionId) {
       // 显示加载提示
       showToast('正在发送消息...');
       
       try {
         // 获取设备ID
         const deviceId = await window.api.getDeviceId();
+        console.log('当前设备ID:', deviceId);
     
         // 创建消息对象
         const messageData = {
@@ -3096,15 +3328,24 @@ async function sendChatMessage() {
           timestamp: new Date().toISOString()
         };
         
+        console.log('准备发送消息:', messageData);
+        
         // 发送消息到服务器
-        const response = await window.api.addMessage(currentCommissionId, messageData);
+        const response = await window.api.addMessage(appCurrentCommissionId, messageData);
+        console.log('发送消息响应:', response);
     
-        if (response && response.success) {
+        if (response && !response.error) {
           // 清空输入框
-    messageInput.value = '';
+          messageInput.value = '';
     
-    // 重新加载消息
-    await loadChatMessages(currentCommissionId);
+          // 注意：如果WebSocket连接可用，服务器会自动推送新消息
+          // 但为了兼容性，如果WebSocket不可用，仍然手动重新加载消息
+          if (!window.WebSocketClient || !window.WebSocketClient.isConnected()) {
+            console.log('WebSocket未连接，手动重新加载消息');
+            await loadChatMessages(appCurrentCommissionId);
+          } else {
+            console.log('WebSocket已连接，等待服务器推送新消息');
+          }
     
           // 如果是颜文字且未激活颜文字模式，则有机会触发彩蛋
           if (isKaomoji && !kaomojiMode && Math.random() < 0.3) {
@@ -3117,18 +3358,30 @@ async function sendChatMessage() {
           }
           
           // 成功提示
-    showToast('消息已发送');
+          showToast('消息已发送');
+        } else if (response && response.error === 'api-not-configured') {
+          console.error('API未配置错误:', response);
+          showCustomAlert('请在"我的"页面的"设置"中添加自定义API才能评论。');
+        } else if (response && response.error === 'daily-limit-reached') {
+          console.error('达到每日评论限制:', response);
+          showCustomAlert('您今天已发表10条评论，请明天再来。');
+        } else if (response && response.error === 'total-limit-reached') {
+          console.error('达到总评论限制:', response);
+          showCustomAlert('您的评论总数已达到上限(50条)，无法继续发表评论。');
+        } else if (response && response.error === 'rate-limited') {
+          console.error('请求频率受限:', response);
+          showCustomAlert('请求过于频繁，请稍后再试。');
         } else {
-          throw new Error('消息发送失败');
+          throw new Error(response && response.message ? response.message : '消息发送失败，请检查API设置。');
         }
   } catch (error) {
     console.error('发送消息失败:', error);
-        showCustomAlert('消息发送失败，请稍后重试。');
+        showCustomAlert(`消息发送失败: ${error.message || '请在"我的"页面的"设置"中添加自定义API才能评论。'}`);
       }
     }
   } catch (error) {
     console.error('发送消息时出错:', error);
-    showCustomAlert('发送消息时出错，请稍后重试。');
+    showCustomAlert(`发送消息时出错: ${error.message || '请在"我的"页面的"设置"中添加自定义API才能评论。'}`);
   }
 }
 
@@ -4814,7 +5067,7 @@ function avadaKedavra() {
   document.body.appendChild(flashContainer);
   
   // 播放咒语音效
-  const audio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAAFowCenp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6e//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAABaOxoK6OAAAAAAAAAAAAAAAAAAAA//tQwAAFDpSrBYewAqM1GWiPYRBEkW799+77p36f/Xfquf2RZFkWU1W36qqqpJ0+hDMD1RY8eQhAIOfh8Ph9JywvBB6gEAQBAEHpTTrwQdPUAcDPTnOdPnBCc5znDlQ3zCH/gQ5znTsOc/ggCAkJynOUHQf48f/B8ecffHj4//kLlZUPGh8qD14Gjw0xDxof8YN/GA0aDZ//Qe7//HjcqR459yU=');
+  const audio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAAFowCenp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6e//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAABaOxoK6OAAAAAAAAAAAAAAAAAAAA//tQwAAFDpSrBYewAqM1GWiPYRBEkW799+77p36f/Xfquf2RZFkWU1W36qqqpJ0+hDMD1RY8eQhAIOfh8Ph9JywvBB6gEAQBAEHpTTrwQdPUAcDPTnOdPnBCc5znDlQ3zCH/gQ5znTsOc/ggCAkJynOUHQf48f/B8ecffHj4//kLlZUPGh8qD14Gjw0xDxof8YN/GA0aDZ//Qe7//HjcqR459yU=');
   audio.volume = 0.5;
   
   // 命令执行后关闭应用
@@ -5581,7 +5834,7 @@ function createAngryEmoji(container, emojisArray) {
   emoji.style.top = `${top}%`;
   
   // 随机旋转
-  const rotation = Math.random() * 40 - 20; // -20到20度
+  const rotation = Math.random() * 40 - 20; // -20 to 20度
   emoji.style.transform = `rotate(${rotation}deg)`;
   
   // 添加到容器
@@ -5680,7 +5933,7 @@ async function deleteUserMessage(commissionId, messageId) {
         loadMyMessages();
         
         // 如果当前在委托详情页面，也刷新聊天消息
-        if (currentCommissionId === commissionId) {
+        if (appCurrentCommissionId === commissionId) {
           console.log('当前在委托详情页面，刷新聊天消息');
           loadChatMessages(commissionId);
         }
@@ -5849,5 +6102,235 @@ document.addEventListener('DOMContentLoaded', function() {
   setupErrorBanner();
   
   // 其他初始化...
+});
+
+// 处理评分功能
+async function handleRating(type) {
+  try {
+    if (!appCurrentCommissionId) {
+      console.error('未找到当前委托ID，无法评分');
+      return;
+    }
+    
+    // 显示加载提示
+    showToast('正在处理评分...');
+    
+    // 获取设备ID
+    const deviceId = await window.api.getDeviceId();
+    
+    // 调用评分API
+    const result = await window.api.rateCommission(appCurrentCommissionId, type, deviceId);
+    
+    if (result && result.success) {
+      // 更新UI显示
+      if (type === 'like') {
+        likeButton.classList.add('active');
+        dislikeButton.classList.remove('active');
+        likeCount.textContent = result.likes || likeCount.textContent;
+        dislikeCount.textContent = result.dislikes || dislikeCount.textContent;
+      } else if (type === 'dislike') {
+        dislikeButton.classList.add('active');
+        likeButton.classList.remove('active');
+        likeCount.textContent = result.likes || likeCount.textContent;
+        dislikeCount.textContent = result.dislikes || dislikeCount.textContent;
+      }
+      
+      showToast(type === 'like' ? '点赞成功' : '踩踩成功');
+    } else {
+      console.error('评分失败:', result);
+      showToast('评分失败，请稍后再试');
+    }
+  } catch (error) {
+    console.error('评分出错:', error);
+    showToast('评分出错，请稍后再试');
+  }
+}
+
+// 绑定点赞和踩按钮事件
+likeButton.addEventListener('click', () => {
+  handleRating('like');
+});
+
+dislikeButton.addEventListener('click', () => {
+  handleRating('dislike');
+});
+
+// 显示委托详情（直接传入commission对象）
+async function displayCommissionDetail(commission) {
+  try {
+    appCurrentCommissionId = commission.id;
+    
+    // 设置标题和内容
+    detailTitle.textContent = commission.title || '无标题';
+    detailContent.innerHTML = formatContent(commission.content || '无内容');
+    
+    // 设置时间和联系方式
+    detailTime.textContent = formatTime(commission.time);
+    detailContact.textContent = commission.contact || '无联系方式';
+    
+    // 设置图片
+    if (commission.images && commission.images.length > 0) {
+      detailImage.src = commission.images[0];
+      detailImage.style.display = 'block';
+    } else {
+      detailImage.style.display = 'none';
+    }
+    
+    // 初始化评分状态
+    initRatingStatus(commission);
+    
+    // 显示详情页
+    showTab('detail');
+  } catch (error) {
+    console.error('显示委托详情出错:', error);
+    showToast('显示委托详情出错');
+  }
+}
+
+// 初始化评分状态
+async function initRatingStatus(commission) {
+  try {
+    // 获取设备ID
+    const deviceId = await window.api.getDeviceId();
+    
+    // 获取评分数据
+    const ratingsKey = `commission_ratings_${commission.id}`;
+    const userRatingKey = `user_rating_${commission.id}_${deviceId}`;
+    
+    // 从localStorage获取评分数据
+    let ratings = JSON.parse(localStorage.getItem(ratingsKey) || '{"likes": 0, "dislikes": 0}');
+    const userRating = localStorage.getItem(userRatingKey);
+    
+    // 如果委托对象中有评分数据，优先使用
+    if (commission.likes !== undefined) ratings.likes = commission.likes;
+    if (commission.dislikes !== undefined) ratings.dislikes = commission.dislikes;
+    
+    // 更新UI显示
+    likeCount.textContent = ratings.likes;
+    dislikeCount.textContent = ratings.dislikes;
+    
+    // 根据用户评分状态更新按钮样式
+    likeButton.classList.remove('active');
+    dislikeButton.classList.remove('active');
+    
+    if (userRating === 'like') {
+      likeButton.classList.add('active');
+    } else if (userRating === 'dislike') {
+      dislikeButton.classList.add('active');
+    }
+  } catch (error) {
+    console.error('初始化评分状态出错:', error);
+  }
+}
+
+// 格式化委托内容，支持简单的Markdown格式
+function formatContent(content) {
+  if (!content) return '';
+  
+  // 转义HTML特殊字符
+  let formattedContent = escapeHtml(content);
+  
+  // 将换行符转换为<br>标签
+  formattedContent = formattedContent.replace(/\n/g, '<br>');
+  
+  // 支持简单的Markdown格式
+  // 粗体: **text**
+  formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // 斜体: *text*
+  formattedContent = formattedContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  
+  // 链接: [text](url)
+  formattedContent = formattedContent.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+  
+  return formattedContent;
+}
+
+// 格式化时间
+function formatTime(timeString) {
+  if (!timeString) return '未知时间';
+  
+  try {
+    const date = new Date(timeString);
+    
+    // 检查日期是否有效
+    if (isNaN(date.getTime())) {
+      return timeString;
+    }
+    
+    // 格式化为：YYYY-MM-DD HH:MM:SS
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  } catch (error) {
+    console.error('格式化时间出错:', error);
+    return timeString;
+  }
+}
+
+// 全局变量区域
+let chatFullscreenBtn;
+
+// 初始化聊天室全屏按钮
+function initChatFullscreenButton() {
+  chatFullscreenBtn = document.getElementById('chat-fullscreen-btn');
+  if (chatFullscreenBtn) {
+    chatFullscreenBtn.addEventListener('click', toggleChatFullscreen);
+    console.log('聊天室全屏按钮初始化完成');
+  } else {
+    console.error('未找到聊天室全屏按钮');
+  }
+}
+
+// 切换聊天室全屏模式
+function toggleChatFullscreen() {
+  const chatSection = document.querySelector('.chat-section');
+  const chatMessages = document.getElementById('chat-messages');
+  const messageInput = document.querySelector('.message-input input');
+  const icon = chatFullscreenBtn.querySelector('i');
+  
+  if (chatSection.classList.contains('fullscreen')) {
+    // 退出全屏模式
+    chatSection.classList.remove('fullscreen');
+    icon.className = 'fas fa-expand';
+    chatFullscreenBtn.title = '全屏查看';
+    
+    // 滚动到底部
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  } else {
+    // 进入全屏模式
+    chatSection.classList.add('fullscreen');
+    icon.className = 'fas fa-compress';
+    chatFullscreenBtn.title = '退出全屏';
+    
+    // 滚动到底部
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // 聚焦输入框
+    if (messageInput) {
+      messageInput.focus();
+    }
+  }
+  
+  // 添加一个简单的过渡效果
+  chatSection.style.transition = 'all 0.3s ease';
+  setTimeout(() => {
+    chatSection.style.transition = '';
+  }, 300);
+}
+
+// 处理ESC键退出全屏
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    const chatSection = document.querySelector('.chat-section');
+    if (chatSection && chatSection.classList.contains('fullscreen')) {
+      toggleChatFullscreen();
+    }
+  }
 });
       

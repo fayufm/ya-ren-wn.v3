@@ -432,7 +432,7 @@ module.exports = { store };
 function setupAutoUpdater() {
   // 日志配置
   autoUpdater.logger = console;
-  log('自动更新已配置，当前版本：1.2.0');
+  log('自动更新已配置，当前版本：1.2.1');
 
   // 设置更新服务器URL (可选，如果在package.json中已配置)
   // autoUpdater.setFeedURL('http://8.155.16.247:3000/updates');

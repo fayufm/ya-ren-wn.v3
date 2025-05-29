@@ -1,84 +1,53 @@
 {
-  "name": "yaren",
-  "productName": "牙人",
+  "name": "yarenapp",
   "version": "1.2.0",
-  "description": "牙人委托发布与查看应用（便携版）",
-  "main": "main-compat.js",
+  "description": "牙人应用 - 委托信息管理平台",
+  "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "clean-dist": "rimraf portable-dist-fixed",
-    "clean-dist-new": "rimraf portable-dist-new",
-    "clean-dist-frameless": "rimraf portable-dist-frameless",
-    "clean-dist-final": "rimraf portable-dist-final",
-    "clean-dist-inline": "rimraf portable-dist-inline",
-    "prepackage": "node prepackage.js",
-    "build": "npm run prepackage && npm run clean-dist && electron-builder --config fixed-portable-config.js",
-    "build-new": "npm run prepackage && npm run clean-dist-new && electron-builder --config portable-config.js",
-    "build-frameless": "npm run prepackage && npm run clean-dist-frameless && electron-builder --config frameless-portable-config.js",
-    "build-final": "npm run prepackage && npm run clean-dist-final && electron-builder --config final-portable-config.js",
-    "build-inline": "npm run prepackage && npm run clean-dist-inline && electron-builder --config inline-uuid-config.js",
-    "build-unpacked": "npm run prepackage && npm run clean-dist && electron-builder --config fixed-portable-config.js --dir",
-    "release": "npm run prepackage && npm run build && electron-builder --publish never --config fixed-portable-config.js",
-    "install-uuid": "npm install uuid@11.1.0 --save",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "electron-builder",
+    "buildwin": "electron-builder --win",
+    "clean": "rimraf dist build",
+    "rebuild": "npm run clean && npm run build",
+    "server-check": "node server-check.js"
   },
-  "keywords": [],
-  "author": "fayufm",
+  "keywords": [
+    "牙人",
+    "委托",
+    "管理",
+    "二次元"
+  ],
+  "author": "FayuFM",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^36.0.0",
-    "electron-builder": "^26.0.12",
+    "electron": "^13.1.7",
+    "electron-builder": "^22.11.7",
+    "socket.io-client": "^4.8.1",
+    "axios": "^1.9.0",
     "rimraf": "^5.0.5"
   },
   "dependencies": {
-    "axios": "^1.9.0",
-    "electron-updater": "^6.6.2",
-    "uuid": "^11.1.0"
+    "electron-store": "^8.1.0",
+    "crypto-js": "^4.2.0",
+    "bootstrap": "^5.3.2",
+    "node-fetch": "^3.3.2"
   },
   "build": {
-    "appId": "com.fayufm.yaren",
+    "appId": "com.fayufm.yarenapp",
     "productName": "牙人",
-    "copyright": "Copyright © 2024 ${author}",
     "directories": {
       "output": "dist"
     },
-    "files": [
-      "**/*",
-      "!**/*.{map,md}",
-      "!{.git,.github,.vscode,build,dist,node_modules,temp_server}/**/*"
-    ],
-    "publish": [
-      {
-        "provider": "generic",
-        "url": "http://8.155.16.247:3000/updates"
-      }
-    ],
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "yaren.ico"
+      "target": "nsis",
+      "icon": "assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
-    },
-    "portable": {
-      "artifactName": "牙人-便携版-${version}.exe"
     }
   }
 }

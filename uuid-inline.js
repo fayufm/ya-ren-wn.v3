@@ -3,8 +3,8 @@
  * 不依赖外部模块，解决便携版找不到uuid模块的问题
  */
 
-// 创建符合RFC4122版本4的UUID
-function uuidv4() {
+// 简单的UUID v4生成函数
+function v4() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -13,6 +13,4 @@ function uuidv4() {
 }
 
 // 导出兼容uuid模块的接口
-module.exports = {
-  v4: uuidv4
-}; 
+module.exports = { v4 }; 

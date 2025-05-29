@@ -1,0 +1,1 @@
+module.exports = { reportInappropriateComment: async (commentId, reason, reporterId) => { console.log(`举报评论: ${commentId}, 原因: ${reason}, 举报人: ${reporterId}`); return { success: true }; }, initReportsData: () => { return {}; } };

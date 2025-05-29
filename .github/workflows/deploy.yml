@@ -1,25 +1,17 @@
 name: 部署到阿里云ECS服务器
-
 on:
   push:
-<<<<<<< HEAD
-    branches: [ 1.0.1 ]  # 触发分支
+    branches: [ main, 1.0.1 ]  # 触发分支
 
 env:
   SERVER_IP: 8.155.16.247
-  DEPLOY_DIR: /var/www/yaren-server
-=======
-    branches: [ main ]  # 根据您的主分支名称调整，可能是 main 或 master
-    paths: 
-      - 'server/**'     # 只有当 server 目录中的文件变更时才触发
->>>>>>> 48c938b10b3bd948b78d7ef2d4cb3cafafeb2f29
+  DEPLOY_DIR: /root/yaren/server
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-<<<<<<< HEAD
-      - name:  检出代码
+      - name: 检出代码
         uses: actions/checkout@v3  # 升级到最新版
 
       - name: 配置SSH密钥
@@ -56,14 +48,20 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa root@${{ env.SERVER_IP }} << EOF
             set -e  # 任何命令失败立即终止
-            cd $DEPLOY_DIR
+            cd ${{ env.DEPLOY_DIR }}
             tar -xzf deploy.tar.gz
             rm deploy.tar.gz
+            # 安装依赖，确保包含socket.io
             npm ci --only=production  # 更严格的依赖安装
-            if pm2 ls | grep -q yaren-server; then
-              pm2 reload yaren-server --update-env
+            npm install socket.io --save  # 确保安装socket.io
+            # 备份旧的PM2配置
+            pm2 save
+            # 重启或启动服务
+            if pm2 ls | grep -q "yaren-api\|yaren-verify\|yaren-websocket-api"; then
+              pm2 restart all --update-env
             else
-              pm2 start main.js --name yaren-server
+              pm2 start index.js --name yaren-websocket-api
+              pm2 start new-verify.js --name yaren-verify
             fi
             pm2 save
             echo "🔧 当前服务状态:"
@@ -72,26 +70,3 @@ jobs:
 
       - name: 清理本地临时文件
         run: rm -f deploy.tar.gz
-=======
-    - name: 检出代码
-      uses: actions/checkout@v3
-    
-    - name: 安装 SSH 密钥
-      uses: shimataro/ssh-key-action@v2
-      with:
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        known_hosts: unnecessary
-        if_key_exists: replace
-        
-    - name: 添加服务器到已知主机
-      run: ssh-keyscan -H 8.155.16.247 >> ~/.ssh/known_hosts
-      
-    - name: 部署到服务器
-      run: |
-        cd server
-        rsync -avz --exclude 'node_modules' --exclude '.git' . root@8.155.16.247:/var/www/yaren-server/
-        
-    - name: 远程执行部署命令
-      run: |
-        ssh root@8.155.16.247 "cd /var/www/yaren-server && npm install --production && pm2 restart app.js || pm2 start app.js --name yaren-server"
->>>>>>> 48c938b10b3bd948b78d7ef2d4cb3cafafeb2f29

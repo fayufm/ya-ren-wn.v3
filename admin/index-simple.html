@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>牙人管理系统 - 简化版</title>
+  <style>
+    body {
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+    h1 {
+      margin: 0;
+    }
+    .card {
+      background: white;
+      border-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      margin-top: 0;
+      color: #3498db;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .stat-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: #f9f9f9;
+      border-radius: 4px;
+      padding: 15px;
+      flex: 1;
+      min-width: 200px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #3498db;
+    }
+    .stat-label {
+      font-size: 1rem;
+      color: #666;
+    }
+    .btn {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn:hover {
+      background: #2980b9;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .status {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+    .status-pending {
+      background-color: #FFC107;
+      color: #000;
+    }
+    .status-completed {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .status-rejected {
+      background-color: #F44336;
+      color: white;
+    }
+    .login-container {
+      max-width: 400px;
+      margin: 5rem auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 5px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="login-section" class="login-container">
+    <h2>管理员登录</h2>
+    <div id="login-error" class="hidden" style="color: red; margin-bottom: 10px;">用户名或密码错误</div>
+    <form id="login-form">
+      <div style="margin-bottom: 15px;">
+        <label for="username" style="display: block; margin-bottom: 5px;">用户名</label>
+        <input type="text" id="username" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+      </div>
+      <div style="margin-bottom: 15px;">
+        <label for="password" style="display: block; margin-bottom: 5px;">密码</label>
+        <input type="password" id="password" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+      </div>
+      <button type="submit" class="btn" style="width: 100%;">登录</button>
+    </form>
+    <div style="margin-top: 15px; text-align: center;">
+      <a href="direct.html" style="color: #3498db;">使用一键登录</a>
+    </div>
+  </div>
+
+  <div id="admin-panel" class="hidden">
+    <header>
+      <h1>牙人管理系统</h1>
+    </header>
+    
+    <div class="card">
+      <h2>仪表盘</h2>
+      <div class="stat-container">
+        <div class="stat-card">
+          <div class="stat-value">10</div>
+          <div class="stat-label">委托总数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">25</div>
+          <div class="stat-label">评论总数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">5</div>
+          <div class="stat-label">活跃用户</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2>最近委托</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>标题</th>
+            <th>状态</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>001</td>
+            <td>测试委托1</td>
+            <td><span class="status status-pending">待处理</span></td>
+            <td>2023-05-28</td>
+            <td><button class="btn">查看</button></td>
+          </tr>
+          <tr>
+            <td>002</td>
+            <td>测试委托2</td>
+            <td><span class="status status-completed">已完成</span></td>
+            <td>2023-05-27</td>
+            <td><button class="btn">查看</button></td>
+          </tr>
+          <tr>
+            <td>003</td>
+            <td>测试委托3</td>
+            <td><span class="status status-rejected">已拒绝</span></td>
+            <td>2023-05-26</td>
+            <td><button class="btn">查看</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="card">
+      <h2>管理员设置</h2>
+      <p><strong>当前登录用户:</strong> <span id="username-display">未登录</span></p>
+      <p><strong>系统状态:</strong> 正常运行</p>
+      <button class="btn" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <script>
+    // 预设管理员凭据
+    const adminUsername = 'xieshuoxing';
+    const adminPassword = '410425200409186093';
+    
+    // 登录表单处理
+    document.getElementById('login-form').addEventListener('submit', function(event) {
+      event.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      if (username === adminUsername && password === adminPassword) {
+        // 存储登录凭据
+        localStorage.setItem('adminUsername', username);
+        localStorage.setItem('adminPassword', password);
+        
+        // 显示管理面板
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('admin-panel').classList.remove('hidden');
+        document.getElementById('username-display').textContent = username;
+      } else {
+        document.getElementById('login-error').classList.remove('hidden');
+      }
+    });
+    
+    // 检查登录状态
+    function checkLoginStatus() {
+      const username = localStorage.getItem('adminUsername');
+      const password = localStorage.getItem('adminPassword');
+      
+      if (username === adminUsername && password === adminPassword) {
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('admin-panel').classList.remove('hidden');
+        document.getElementById('username-display').textContent = username;
+      }
+    }
+    
+    // 退出登录
+    function logout() {
+      localStorage.removeItem('adminUsername');
+      localStorage.removeItem('adminPassword');
+      document.getElementById('login-section').classList.remove('hidden');
+      document.getElementById('admin-panel').classList.add('hidden');
+    }
+    
+    // 页面加载时检查登录状态
+    window.addEventListener('DOMContentLoaded', checkLoginStatus);
+  </script>
+</body>
+</html>

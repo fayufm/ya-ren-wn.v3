@@ -1,0 +1,57 @@
+/* 自定义圆角设置 */
+
+/* 如果需要为所有委托卡片设置统一的圆角大小，请修改下面的值 */
+:root {
+  --card-radius: 8px;         /* 卡片圆角大小 */
+  --cover-radius: 8px 8px 0 0; /* 封面容器圆角大小 */
+  --img-radius: 8px 8px 0 0;   /* 图片圆角大小 */
+}
+
+/* 应用自定义圆角设置 */
+.commission-card {
+  border-radius: var(--card-radius);
+}
+
+.commission-cover {
+  border-radius: var(--cover-radius);
+}
+
+.commission-cover img {
+  border-radius: var(--img-radius);
+}
+
+/* 为特定卡片设置不同的圆角大小 */
+.commission-card.large-radius {
+  --card-radius: 16px;
+  --cover-radius: 16px 16px 0 0;
+  --img-radius: 16px 16px 0 0;
+}
+
+.commission-card.medium-radius {
+  --card-radius: 12px;
+  --cover-radius: 12px 12px 0 0;
+  --img-radius: 12px 12px 0 0;
+}
+
+.commission-card.small-radius {
+  --card-radius: 4px;
+  --cover-radius: 4px 4px 0 0;
+  --img-radius: 4px 4px 0 0;
+}
+
+.commission-card.rounded-img {
+  --img-radius: 50%;
+}
+
+/* 如果需要圆形封面图 */
+.commission-card.circle-cover {
+  --cover-radius: 50% 50% 0 0;
+  --img-radius: 50% 50% 0 0;
+}
+
+/* 完全无圆角 */
+.commission-card.no-radius {
+  --card-radius: 0;
+  --cover-radius: 0;
+  --img-radius: 0;
+}

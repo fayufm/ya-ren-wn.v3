@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>牙人</title>
   <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/commission-card-fixed.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     /* 添加标题栏按钮样式 */
@@ -542,11 +543,22 @@
         </div>
         
         <div class="chat-section">
-          <h3>聊天室</h3>
+          <div class="chat-header">
+            <h3>聊天室</h3>
+            <div class="chat-status">
+              <span id="realtime-status" class="realtime-status">
+                <i class="fas fa-circle"></i>
+                <span id="realtime-status-text">离线</span>
+              </span>
+            </div>
+            <button id="chat-fullscreen-btn" class="chat-fullscreen-btn" title="全屏查看">
+              <i class="fas fa-expand"></i>
+            </button>
+          </div>
           <div id="chat-messages"></div>
           <div class="message-input">
-            <input type="text" id="message-input" placeholder="输入消息...">
             <button id="send-message">发送</button>
+            <input type="text" id="message-input" placeholder="输入消息...">
           </div>
         </div>
       </section>
@@ -578,6 +590,11 @@
         <span id="error-message"></span>
         <button id="error-close" class="error-close"><i class="fas fa-times"></i></button>
       </div>
+    </div>
+    
+    <!-- 版本信息 -->
+    <div class="version-info">
+      <span>牙人 v1.2.1</span>
     </div>
     
     <!-- 更新通知UI -->
@@ -616,9 +633,12 @@
       window.api.closeApp();
     });
   </script>
+  <script src="scripts/card-corner-fixer.js"></script>
   <script src="scripts/api-config.js"></script>
+  <script src="scripts/socket-io-cdn.js"></script>
   <script src="scripts/server-api.js"></script>
   <script src="scripts/network-status.js"></script>
+  <script src="scripts/websocket-client.js"></script>
   <script src="scripts/api-bridge.js"></script>
   <script src="scripts/notification-system.js"></script>
   <script src="scripts/app.js"></script>

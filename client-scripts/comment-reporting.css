@@ -1,0 +1,181 @@
+/**
+ * 评论"不适"举报功能样式
+ */
+
+/* 评论操作容器 */
+.comment-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+/* 举报按钮样式 */
+.report-inappropriate-btn {
+    background-color: #f5f5f5;
+    color: #666;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.report-inappropriate-btn:hover {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+.report-inappropriate-btn:active {
+    transform: scale(0.95);
+}
+
+/* 已举报状态 */
+.report-inappropriate-btn.reported {
+    background-color: #f0f0f0;
+    color: #999;
+    cursor: not-allowed;
+}
+
+/* @评论按钮样式 */
+.reply-comment-btn {
+    background-color: #e8f4ff;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reply-comment-btn:hover {
+    background-color: #bbdefb;
+    color: #0d47a1;
+}
+
+.reply-comment-btn:active {
+    transform: scale(0.95);
+}
+
+/* 举报计数器样式 */
+.report-counter {
+    font-size: 12px;
+    color: #888;
+    margin-left: 5px;
+    font-weight: bold;
+}
+
+/* 举报进度条容器 */
+.report-progress-container {
+    height: 4px;
+    background-color: #e0e0e0;
+    border-radius: 2px;
+    width: 100%;
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+/* 举报进度条 */
+.report-progress {
+    height: 100%;
+    background-color: #4CAF50;
+    width: 0;
+    border-radius: 2px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* 评论被删除的动画效果 */
+.message-item.removed {
+    opacity: 0;
+    transform: translateX(20px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+/* 提示消息样式 */
+.toast-message {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    z-index: 9999;
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.toast-message.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* 回复提示样式 */
+.reply-indicator {
+    background-color: #f0f8ff;
+    border: 1px solid #cce5ff;
+    border-radius: 4px;
+    padding: 5px 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #0066cc;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* 取消回复按钮 */
+.cancel-reply {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 16px;
+    cursor: pointer;
+    margin-left: 10px;
+    padding: 0 5px;
+}
+
+.cancel-reply:hover {
+    color: #666;
+}
+
+/* 通知红点 */
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: #f44336;
+    color: white;
+    border-radius: 50%;
+    min-width: 18px;
+    height: 18px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    box-sizing: border-box;
+    font-weight: bold;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* 我的按钮容器 */
+.my-page-btn, #my-page-btn {
+    position: relative;
+}
+
+/* 回复的消息样式 */
+.message-item.replied-to {
+    border-left: 3px solid #2196F3;
+    padding-left: 8px;
+    background-color: rgba(33, 150, 243, 0.05);
+}
+
+/* @提及 样式 */
+.message-mention {
+    color: #1976d2;
+    font-weight: bold;
+} 
