@@ -1276,7 +1276,27 @@ function renderCommissionsList(commissions, container) {
   }
 }
 
-// 加载委托详情
+// 添加一个返回列表的函数
+function backToList() {
+  // 如果在WebSocket聊天室中，先离开
+  if (window.WebSocketClient && appCurrentCommissionId) {
+    console.log(`离开委托[${appCurrentCommissionId}]的WebSocket聊天室`);
+    window.WebSocketClient.leaveCommission(appCurrentCommissionId);
+  }
+  
+  // 重置当前委托ID
+  appCurrentCommissionId = null;
+  
+  // 重置API状态标志
+  isLoadingCommissions = false;
+  isLoadingMyCommissions = false;
+  isLoadingMyMessages = false;
+  
+  // 返回首页
+  showTab(homeTab);
+}
+
+// 修改showCommissionDetail函数，添加返回按钮
 async function showCommissionDetail(id) {
   if (!id) {
     console.error('showCommissionDetail: 无效的委托ID');
@@ -1299,6 +1319,21 @@ async function showCommissionDetail(id) {
     detailCity.textContent = '';
     detailDate.textContent = '';
     detailImageContainer.innerHTML = '';
+    
+    // 添加返回按钮
+    const backButton = document.createElement('button');
+    backButton.className = 'back-button';
+    backButton.innerHTML = '<i class="fas fa-arrow-left"></i> 返回列表';
+    backButton.addEventListener('click', backToList);
+    
+    // 如果已有返回按钮，则移除
+    const existingBackButton = detailView.querySelector('.back-button');
+    if (existingBackButton) {
+      existingBackButton.remove();
+    }
+    
+    // 添加到详情视图顶部
+    detailView.insertBefore(backButton, detailView.firstChild);
     
     // 重置赞踩按钮状态
     likeButton.classList.remove('active');
@@ -2732,7 +2767,7 @@ async function deleteCommission(id) {
     
     // 如果当前正在查看被删除的委托，则返回首页
     if (appCurrentCommissionId === id && detailView.classList.contains('active')) {
-      showTab('home');
+      backToList();
     }
     
     return true;

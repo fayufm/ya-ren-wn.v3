@@ -3337,3 +3337,35 @@ body.dark-mode.classical-chinese-mode .chat-fullscreen-btn:hover {
 body.dark-mode .version-info {
   color: #aaa;
 }
+
+/* 返回按钮样式 */
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 15px;
+  margin-bottom: 15px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.back-button:hover {
+  background-color: var(--primary-color-dark);
+}
+
+.back-button i {
+  margin-right: 8px;
+}
+
+/* 深色模式下的返回按钮 */
+.dark-mode .back-button {
+  background-color: var(--primary-color-dark);
+}
+
+.dark-mode .back-button:hover {
+  background-color: var(--primary-color);
+}
